@@ -1,4 +1,7 @@
-﻿namespace VerbalCards.Endpoints;
+﻿using Microsoft.AspNetCore.Mvc;
+using VerbalCards.Services;
+
+namespace VerbalCards.Endpoints;
 
 public static class AudioEndpoints
 {
@@ -21,5 +24,32 @@ public static class AudioEndpoints
         //pathBuilder.MapGet("/get-metadata/{audioId}", GetMetaDataHandler);
 
         //pathBuilder.MapGet("/filter/{category}", FilterAudioHandler);
+    }
+
+    private static async Task<AudioUploaderResult> UploadAudioHandler(
+        IFormFile audioFile,
+        HttpContext httpContext,
+        [FromServices] IAudioUploader audioUploader
+    )
+    {
+        audioUploader.OriginalFilename = audioFile.FileName;
+        audioUploader.ContentType = audioFile.ContentType;
+        audioUploader.InputStream = audioFile.OpenReadStream();
+
+        var uploaderResult = await audioUploader.StoreAsync();
+
+        httpContext.Response.StatusCode = uploaderResult.StatusCode;
+        return uploaderResult;
+    }
+
+    private static async Task<IResult> GetAudioHandler(
+        [FromRoute] string audioId,
+        HttpContext httpContext,
+        [FromServices] IAudioService audioService
+    )
+    {
+        var getAudioResult = await audioService.GetAudioAsync(audioId);
+        httpContext.Response.StatusCode = getAudioResult.StatusCode;
+        return Results.Stream(getAudioResult.Stream, getAudioResult.ContentType);
     }
 }
