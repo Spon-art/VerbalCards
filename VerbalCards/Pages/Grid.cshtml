@@ -1,20 +1,22 @@
-﻿@page "/grid"
+﻿@page "/Grid"
 @model VerbalCards.Pages.Grid
 @{
     ViewData["Title"] = "Grid - VerbalCards";
     Layout = "Shared/_Layout";
 }
 
-<div>
-    VerbalCards<br>
-    Download audio files show in grid
+<div class="center_blank">
+    <h2>Download audio files show in grid</h2>
+    
+    <br/>
+    
+    <div class="container">
+        @foreach (var item in Model.audioItems)
+        {
+            <div class="item pink">
+                I am an audio file!
+            </div>
+        }
+    </div>
 </div>
 
-<div class="container">
-    @foreach (var item in Model.audioItems)
-    {
-        <div class="item pink">
-            I am an audio file!
-        </div>
-    }
-</div>

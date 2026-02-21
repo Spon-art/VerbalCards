@@ -1,0 +1,21 @@
+# This is a generated file. Not intended for manual editing.
+services:
+  verbalcards:
+    build:
+      context: "C:\\Users\\Sponnie\\RiderProjects\\VerbalCards"
+      dockerfile: "VerbalCards/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net10.0/VerbalCards.dll"
+    environment:
+      ASPNETCORE_STATICWEBASSETS: "/app/bin/Debug/net10.0/VerbalCards.staticwebassets.runtime.CT.json"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "verbalcards:dev"
+    ports: []
+    volumes:
+    - "C:\\Users\\Sponnie\\RiderProjects\\VerbalCards\\VerbalCards:/app:rw"
+    - "C:\\Users\\Sponnie\\RiderProjects\\VerbalCards:/src:rw"
+    - "C:\\Users\\Sponnie\\.nuget\\packages:/home/app/.nuget/packages"
+    working_dir: "/app"

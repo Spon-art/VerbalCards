@@ -10,6 +10,8 @@ builder.Services.AddRazorPages();
 builder.Services.AddAntiforgery();
 builder.Services.AddSession();
 
+builder.Services.AddHttpClient();
+
 builder.Services.AddSingleton<IMongoClient>(sp => 
     new MongoClient(builder.Configuration.GetConnectionString("Mongo"))
 );

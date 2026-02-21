@@ -1,11 +1,43 @@
-﻿@page "/upload"
+﻿@page "/Upload"
 @model VerbalCards.Pages.Upload
 @{
     ViewData["Title"] = "Upload - VerbalCards";
     Layout = "Shared/_Layout";
 }
 
-<div>
-    VerbalCards<br>
-    Upload audio files
+<div class="center">
+
+    <h2>Upload an MP3 file</h2>
+
+    <form id="uploadForm" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <input type="file" name="AudioFile" accept=".mp3,audio/mpeg" />
+        <br/><br/>
+        <button type="submit">Upload</button>
+    </form>
+
+    @if (Model.UploadResult != null)
+    {
+        <p>Status: @Model.UploadResult.StatusCode</p>
+        <p>Audio ID: @Model.UploadResult.AudioId</p>
+    }
+
+    <!--
+    <script>
+        document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+          e.preventDefault(); // stop normal form submission
+        
+          const formData = new FormData(e.target);
+        
+          const response = await fetch("/audio/upload", {
+            method: "POST",
+            body: formData
+          });
+        
+          const json = await response.json();
+          console.log(json);
+        });
+    </script>
+    -->
+    
 </div>
