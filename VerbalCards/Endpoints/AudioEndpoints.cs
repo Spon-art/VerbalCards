@@ -13,7 +13,7 @@ public static class AudioEndpoints
     {
         // Anti-forgery is disabled. This was decided because the backend will not serve any forms.
         // Anti-forgery measures are covered in the front-end, and by the JWT token protection. 
-        // pathBuilder.RequireAuthorization().DisableAntiforgery();
+        // pathBuilder.DisableAntiforgery();
         
         pathBuilder.MapPost("/upload", UploadAudioHandler);
         

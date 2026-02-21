@@ -7,7 +7,7 @@ namespace VerbalCards.Services;
 
 public class MongoAudioUploader : IAudioUploader
 {
-    private static readonly HashSet<string> ValidMediaTypes = new(["audio/mp3"]);
+    private static readonly HashSet<string> ValidMediaTypes = new(["audio/mpeg"]);
     
     public string OriginalFilename { get; set; } =  string.Empty;
     public string ContentType { get; set; } = string.Empty;

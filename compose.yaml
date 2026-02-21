@@ -4,6 +4,13 @@
     build:
       context: .
       dockerfile: VerbalCards/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - "8080:8080"
+    depends_on:
+      mongo:
+        condition: service_started
 
   mongo:
     image: mongo
