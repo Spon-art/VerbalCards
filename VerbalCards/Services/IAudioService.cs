@@ -17,7 +17,19 @@ public interface IAudioService
     /// <param name="audioId"></param>
     /// <returns></returns>
     Task<HttpStatusCode> DeleteAudioAsync(string audioId);
+    
+    Task<List<AudioPlaylistItem>> GetPlaylistAsync();
 }
+
+
+public sealed class AudioPlaylistItem
+{
+    public required string Id { get; set; }
+    public required string Filename { get; set; }
+    public required string ContentType { get; set; }
+}
+
+
 
 /// <summary>
 /// The result of downloading an audio.
@@ -38,6 +50,10 @@ public sealed class GetAudioResult
     /// Download stream. Empty stream in case of failure.
     /// </summary>
     public Stream Stream { get; set; } = Stream.Null;
+    
+    public string Filename { get; set; } = String.Empty;
+    
+    public long? FileLength { get; set; }
 
     /// <summary>
     /// Content type. "text/plain" in case of failure.

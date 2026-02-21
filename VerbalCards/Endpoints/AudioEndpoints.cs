@@ -49,7 +49,23 @@ public static class AudioEndpoints
     )
     {
         var getAudioResult = await audioService.GetAudioAsync(audioId);
+
         httpContext.Response.StatusCode = getAudioResult.StatusCode;
-        return Results.Stream(getAudioResult.Stream, getAudioResult.ContentType);
+        if (httpContext.Response.StatusCode != 200)
+        {
+            return Results.NotFound();
+        }
+        
+        // Required for duration + seek bar
+        httpContext.Response.ContentLength = getAudioResult.FileLength;
+        
+        // Required for browser seek support
+        httpContext.Response.Headers.Append("Accept-Ranges", "bytes");
+        
+        return Results.File(
+            getAudioResult.Stream, 
+            getAudioResult.ContentType, 
+            getAudioResult.Filename,
+            enableRangeProcessing: true);
     }
 }

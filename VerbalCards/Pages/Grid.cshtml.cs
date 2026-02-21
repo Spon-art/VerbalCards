@@ -1,17 +1,21 @@
 ﻿using Microsoft.AspNetCore.Mvc.RazorPages;
+using VerbalCards.Services;
 
 namespace VerbalCards.Pages;
 
 public class Grid : PageModel
 {
-    public required List<AudioItem> audioItems { get; set; } = [new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new()];
+    private readonly IAudioService _audioService;
 
-    public void OnGet()
+    public Grid(IAudioService audioService)
     {
-        
+        _audioService = audioService;
     }
-}
+    
+    public List<AudioPlaylistItem> AudioItems { get; set; } = [];
 
-public class AudioItem
-{
+    public async Task OnGetAsync()
+    {
+        AudioItems = await _audioService.GetPlaylistAsync();
+    }
 }

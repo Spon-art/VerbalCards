@@ -59,7 +59,6 @@ nav img {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    align-items: center;
     margin: auto;
     background-color: #454053;
     color: #B0B0B0;
@@ -67,10 +66,15 @@ nav img {
     border-radius: 25px;
 }
 
+.center_blank h2 {
+    text-align: center;
+}
+
 .container {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
+    padding: 0 15px 15px 15px;
 }
 
 .item {
@@ -80,4 +84,9 @@ nav img {
     position: relative;
     background-color: #B0B0B0;
     color: black;
+    border-radius: 15px;
+}
+
+.item audio {
+    width: -webkit-fill-available;
 }

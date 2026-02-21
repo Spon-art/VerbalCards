@@ -2,15 +2,18 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.GridFS;
+using MongoDB.Driver.Linq;
 
 namespace VerbalCards.Services;
 
 public class MongoAudioService : IAudioService
 {
+    private readonly IMongoDatabase _db;
     private readonly GridFSBucket _bucket;
 
     public MongoAudioService(IMongoDatabase database)
     {
+        _db = database;
         _bucket = new GridFSBucket(database);
     }
     
@@ -27,6 +30,8 @@ public class MongoAudioService : IAudioService
             {
                 StatusCode = 200,
                 Stream = gridStream,
+                Filename = gridStream.FileInfo.Filename,
+                FileLength = gridStream.FileInfo.Length,
                 ContentType = gridStream.FileInfo.Metadata.GetElement("MediaType").Value.AsString,
             };
         }
@@ -52,6 +57,18 @@ public class MongoAudioService : IAudioService
     {
         throw new NotImplementedException();
     }
-    
-    
+
+    public async Task<List<AudioPlaylistItem>> GetPlaylistAsync()
+    {
+        var filter = Builders<GridFSFileInfo>.Filter.Empty;
+        var cursor = await _bucket.FindAsync(filter);
+        var files = await cursor.ToListAsync();
+
+        return files.Select(f => new AudioPlaylistItem
+        {
+            Id = f.Id.ToString(),
+            Filename = f.Filename,
+            ContentType = f.Metadata["MediaType"].AsString
+        }).ToList();
+    }
 }
