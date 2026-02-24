@@ -18,6 +18,18 @@ public static class AudioEndpoints
         pathBuilder.MapPost("/upload", UploadAudioHandler);
         
         pathBuilder.MapGet("/get/{audioId}", GetAudioHandler);
+        
+        pathBuilder.MapPost("/audio/{id}/transcribe", async (
+            string id,
+            IAudioService service) =>
+        {
+            var result = await service.TranscribeAsync(id);
+
+            if (result == null)
+                return Results.BadRequest("Transcription failed");
+
+            return Results.Ok(result);
+        });
 
         //pathBuilder.MapDelete("/delete/{audioId}", DeleteAudioHandler);
 

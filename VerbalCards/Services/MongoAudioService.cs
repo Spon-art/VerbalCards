@@ -10,10 +10,12 @@ public class MongoAudioService : IAudioService
 {
     private readonly IMongoDatabase _db;
     private readonly GridFSBucket _bucket;
+    private readonly HttpClient _httpClient;
 
-    public MongoAudioService(IMongoDatabase database)
+    public MongoAudioService(IMongoDatabase database, HttpClient httpClient)
     {
         _db = database;
+        _httpClient = httpClient;
         _bucket = new GridFSBucket(database);
     }
     
@@ -70,5 +72,32 @@ public class MongoAudioService : IAudioService
             Filename = f.Filename,
             ContentType = f.Metadata["MediaType"].AsString
         }).ToList();
+    }
+    
+    public async Task<string?> TranscribeAsync(string audioId)
+    {
+        var audioResult = await GetAudioAsync(audioId);
+
+        if (audioResult.StatusCode != 200 || audioResult.Stream == null)
+            return null;
+
+        using var content = new MultipartFormDataContent();
+        using var streamContent = new StreamContent(audioResult.Stream);
+
+        streamContent.Headers.ContentType =
+            new System.Net.Http.Headers.MediaTypeHeaderValue(audioResult.ContentType);
+
+        content.Add(streamContent, "file", audioResult.Filename);
+
+        var response = await _httpClient.PostAsync(
+            "http://localhost:8000/transcribe",
+            content
+        );
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        var json = await response.Content.ReadAsStringAsync();
+        return json;
     }
 }

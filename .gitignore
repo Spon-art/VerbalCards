@@ -5,3 +5,5 @@ riderModule.iml
 /_ReSharper.Caches/
 .idea/.idea.VerbalCards/Docker/compose.generated.override.yml
 /.idea
+/VerbalCards/AsrService/__pycache__
+/.idea

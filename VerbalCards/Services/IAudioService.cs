@@ -19,6 +19,8 @@ public interface IAudioService
     Task<HttpStatusCode> DeleteAudioAsync(string audioId);
     
     Task<List<AudioPlaylistItem>> GetPlaylistAsync();
+
+    Task<string?> TranscribeAsync(string audioId);
 }
 
 

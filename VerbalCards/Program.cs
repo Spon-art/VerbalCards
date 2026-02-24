@@ -11,6 +11,7 @@ builder.Services.AddAntiforgery();
 builder.Services.AddSession();
 
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient<IAudioService, MongoAudioService>();
 
 builder.Services.AddSingleton<IMongoClient>(sp => 
     new MongoClient(builder.Configuration.GetConnectionString("Mongo"))
