@@ -11,6 +11,11 @@
     depends_on:
       mongo:
         condition: service_started
+  
+  asr:
+    build: ./VerbalCards/AsrService
+    ports:
+      - "8000:8000"
 
   mongo:
     image: mongo

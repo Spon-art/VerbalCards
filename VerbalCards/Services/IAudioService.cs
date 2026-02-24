@@ -21,6 +21,8 @@ public interface IAudioService
     Task<List<AudioPlaylistItem>> GetPlaylistAsync();
 
     Task<string?> TranscribeAsync(string audioId);
+
+    Task<string?> GetTranscriptionStatusAsync(string jobId);
 }
 
 

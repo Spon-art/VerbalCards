@@ -19,7 +19,7 @@ public static class AudioEndpoints
         
         pathBuilder.MapGet("/get/{audioId}", GetAudioHandler);
         
-        pathBuilder.MapPost("/audio/{id}/transcribe", async (
+        pathBuilder.MapPost("/{id}/transcribe", async (
             string id,
             IAudioService service) =>
         {

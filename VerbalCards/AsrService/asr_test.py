@@ -1,8 +1,19 @@
 import nemo.collections.asr as nemo_asr
+from fastapi import FastAPI, UploadFile
 
-model = nemo_asr.models.ASRModel.from_pretrained(
-    "nvidia/parakeet-rnnt-110m-da-dk"
-)
+app = FastAPI()
 
-transcription = model.transcribe(["/Users/Jake/Desktop/ITU/VerbalCards/VerbalCards/AsrService/DAN_F_GreteT.wav"])
-print(transcription)
+@app.post("/transcribe")
+async def transcribe(file: UploadFile):
+    model = nemo_asr.models.ASRModel.from_pretrained(
+        "nvidia/parakeet-rnnt-110m-da-dk"
+    )
+    
+    file_path = f"temp_{file.filename}"
+
+    with open(file_path, "wb") as buffer:
+        buffer.write(await file.read())
+
+    result = model.transcribe([file_path])[0]
+
+    return {"transcript": result}

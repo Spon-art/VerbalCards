@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http.Headers;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.GridFS;
@@ -82,22 +83,34 @@ public class MongoAudioService : IAudioService
             return null;
 
         using var content = new MultipartFormDataContent();
-        using var streamContent = new StreamContent(audioResult.Stream);
+        await using var stream = audioResult.Stream;
 
+        var streamContent = new StreamContent(stream);
         streamContent.Headers.ContentType =
-            new System.Net.Http.Headers.MediaTypeHeaderValue(audioResult.ContentType);
+            new MediaTypeHeaderValue(audioResult.ContentType);
 
         content.Add(streamContent, "file", audioResult.Filename);
 
         var response = await _httpClient.PostAsync(
-            "http://localhost:8000/transcribe",
+            "http://asr:8000/transcribe",
             content
         );
 
         if (!response.IsSuccessStatusCode)
             return null;
+        
+        return await response.Content.ReadAsStringAsync();
+    }
+    
+    public async Task<string?> GetTranscriptionStatusAsync(string jobId)
+    {
+        var response = await _httpClient.GetAsync(
+            $"http://asr:8000/transcribe/status/{jobId}"
+        );
 
-        var json = await response.Content.ReadAsStringAsync();
-        return json;
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        return await response.Content.ReadAsStringAsync();
     }
 }
