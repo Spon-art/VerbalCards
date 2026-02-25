@@ -6,3 +6,4 @@ riderModule.iml
 .idea/.idea.VerbalCards/Docker/compose.generated.override.yml
 /.idea
 .DS_Store
+*.wav
