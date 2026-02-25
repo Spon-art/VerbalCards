@@ -5,3 +5,4 @@ riderModule.iml
 /_ReSharper.Caches/
 .idea/.idea.VerbalCards/Docker/compose.generated.override.yml
 /.idea
+.DS_Store
