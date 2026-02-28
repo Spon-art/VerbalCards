@@ -4,22 +4,28 @@
 RUN apt-get update && apt-get install -y \
     libsndfile1 \
     ffmpeg \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
-# Copy and install Python dependencies
+# Install core dependencies first
+RUN pip install --no-cache-dir Cython packaging
+
+# Install specific compatible versions of PyTorch and Torchvision
+# CPU version
+RUN pip install --no-cache-dir torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu
+
+# Install Nemo after core packages
+RUN pip install --no-cache-dir 'nemo_toolkit['asr']'
+
+# Copy requirements.txt (if you have additional packages)
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
 
-# Expose port
 EXPOSE 8000
-
-# Run FastAPI app
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]   

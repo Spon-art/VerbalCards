@@ -1,5 +1,4 @@
 fastapi
 uvicorn
-nemo_toolkit[all]
 soundfile
 pydub   

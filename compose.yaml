@@ -14,8 +14,8 @@
 
   python-asr:
     build:
-      context: ./ParakeetService
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ParakeetService/Dockerfile
     ports:
       - "8000:8000"
     depends_on:
