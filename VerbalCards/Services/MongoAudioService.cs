@@ -25,14 +25,14 @@ public class MongoAudioService : IAudioService
             var id = new ObjectId(audioId);
 
             var gridStream = await _bucket.OpenDownloadStreamAsync(id, null, cts.Token);
-            
+        
             return new GetAudioResult
             {
                 StatusCode = 200,
                 Stream = gridStream,
                 Filename = gridStream.FileInfo.Filename,
                 FileLength = gridStream.FileInfo.Length,
-                ContentType = gridStream.FileInfo.Metadata.GetElement("MediaType").Value.AsString,
+                ContentType = gridStream.FileInfo.Metadata?.GetElement("MediaType").Value?.AsString ?? "audio/wav"
             };
         }
         catch (GridFSFileNotFoundException)
@@ -51,7 +51,7 @@ public class MongoAudioService : IAudioService
                 Error = "Invalid ObjectID format",
             };
         }
-    }
+    }   
 
     public Task<HttpStatusCode> DeleteAudioAsync(string audioId)
     {

@@ -8,36 +8,94 @@
 
 <div class="center">
     <h2>Transcribe Audio</h2>
-    <form id="transcribeForm" enctype="multipart/form-data">
-        <input type="file" id="audioFile" name="file" accept="audio/mpeg,audio/wav" required />
+
+    <!-- Option 1: Upload File -->
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" id="audioFile" name="audioFile" accept="audio/mpeg,audio/wav" required />
         <br/><br/>
-        <button type="submit">Transcribe</button>
+        <button type="submit">Upload & Transcribe</button>
     </form>
-    
+
+    <br/>
+
+    <!-- Option 2: Record from Microphone -->
+    <div>
+        <button type="button" id="startRecord">Start Recording</button>
+        <button type="button" id="stopRecord" disabled>Stop Recording</button>
+        <p id="status"></p>
+    </div>
+
     <div id="result"></div>
-</div>   
+</div>
 
 <script>
-document.getElementById("transcribeForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    
-    const fileInput = document.getElementById("audioFile");
-    const file = fileInput.files[0];
-    const formData = new FormData();
-    formData.append("file", file);
-    
+let mediaRecorder;
+let audioChunks = [];
+const startRecordButton = document.getElementById("startRecord");
+const stopRecordButton = document.getElementById("stopRecord");
+const status = document.getElementById("status");
+const resultDiv = document.getElementById("result");
+
+// Start Recording
+startRecordButton.onclick = async () => {
+    status.textContent = "🎤 Recording...";
+    startRecordButton.disabled = true;
+    stopRecordButton.disabled = false;
+
     try {
-        const response = await fetch("http://localhost:8000/transcribe", {
-            method: "POST",
-            body: formData
-        });
-        
-        const data = await response.json();
-        document.getElementById("result").innerHTML = 
-            `<p>Transcription: ${data.transcription}</p>`;
-    } catch (error) {
-        document.getElementById("result").innerHTML = 
-            `<p>Error: ${error.message}</p>`;
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(audioChunks, { type: 'audio/wav' });
+            status.textContent = "Sending...";
+            uploadBlob(blob, "recording.wav");
+        };
+
+        mediaRecorder.start();
+    } catch (err) {
+        status.textContent = "Error: " + err.message;
+        startRecordButton.disabled = false;
+        stopRecordButton.disabled = true;
     }
+};
+
+// Stop Recording
+stopRecordButton.onclick = () => {
+    mediaRecorder.stop();
+    stopRecordButton.disabled = true;
+    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+};
+
+// Upload Blob or File
+async function uploadBlob(blob, filename) {
+    const formData = new FormData();
+    formData.append("audioFile", blob, filename);
+
+    const response = await fetch("/api/audio/upload", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await response.json();
+    resultDiv.innerHTML = `<p>Transcription: ${data.transcription}</p>`;
+}
+
+// Handle File Upload
+document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const file = document.getElementById("audioFile").files[0];
+    const formData = new FormData();
+    formData.append("audioFile", file);
+    
+    const response = await fetch("/api/audio/upload", {
+        method: "POST",
+        body: formData
+    });
+    
+    const data = await response.json();
+    resultDiv.innerHTML = `<p>Transcription: ${data.transcription}</p>`;
 });
 </script>   
