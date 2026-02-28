@@ -1,3 +1,5 @@
-pip install torch torchvision torchaudio
-pip install 'nemo_toolkit['all']'
-pip install soundfile
+fastapi
+uvicorn
+nemo_toolkit[all]
+soundfile
+pydub   
