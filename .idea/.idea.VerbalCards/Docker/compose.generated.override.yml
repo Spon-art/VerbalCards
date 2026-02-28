@@ -2,7 +2,7 @@
 services:
   verbalcards:
     build:
-      context: "/Users/Jake/Desktop/ITU/VerbalCards"
+      context: "C:\\Users\\Sponnie\\RiderProjects\\VerbalCards"
       dockerfile: "VerbalCards/Dockerfile"
       target: "base"
     command: []
@@ -15,7 +15,7 @@ services:
     image: "verbalcards:dev"
     ports: []
     volumes:
-    - "/Users/Jake/Desktop/ITU/VerbalCards/VerbalCards:/app:rw"
-    - "/Users/Jake/Desktop/ITU/VerbalCards:/src:rw"
-    - "/Users/Jake/.nuget/packages:/home/app/.nuget/packages"
+    - "C:\\Users\\Sponnie\\RiderProjects\\VerbalCards\\VerbalCards:/app:rw"
+    - "C:\\Users\\Sponnie\\RiderProjects\\VerbalCards:/src:rw"
+    - "C:\\Users\\Sponnie\\.nuget\\packages:/home/app/.nuget/packages"
     working_dir: "/app"

@@ -59,7 +59,32 @@ public class MongoAudioUploader : IAudioUploader
         
         return null;
     }
+    
+    private async Task<AudioUploaderResult> UploadToStorage()
+    {
+        var options = new GridFSUploadOptions
+        {
+            Metadata = new BsonDocument
+            {
+                { "MediaType", ContentType } // Store MIME type here
+            }
+        };
 
+        var fileId = await _bucket.UploadFromStreamAsync(
+            filename: OriginalFilename,
+            source: InputStream,
+            options: options
+        );
+
+        return new AudioUploaderResult
+        {
+            StatusCode = 201,
+            AudioId = fileId.ToString()
+        };
+    }   
+    
+    
+    /*
     private async Task<AudioUploaderResult> UploadToStorage()
     {
         var fileId = await _bucket.UploadFromStreamAsync(
@@ -79,4 +104,5 @@ public class MongoAudioUploader : IAudioUploader
             AudioId = fileId.ToString()
         };
     }
+    */
 }

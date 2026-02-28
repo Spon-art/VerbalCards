@@ -12,14 +12,15 @@
       mongo:
         condition: service_started
 
-  python-asr:
-    build:
-      context: .
-      dockerfile: ParakeetService/Dockerfile
-    ports:
-      - "8000:8000"
-    depends_on:
-      - verbalcards
+  
+#  python-asr:
+#    build:
+#      context: ./ParakeetService
+#      dockerfile: Dockerfile
+#    ports:
+#      - "8000:8000"
+#    depends_on:
+#      - verbalcards
 
   mongo:
     image: mongo
