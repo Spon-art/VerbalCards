@@ -13,10 +13,6 @@ WORKDIR /app
 # Install core dependencies first
 RUN pip install --no-cache-dir Cython packaging
 
-# Install specific compatible versions of PyTorch and Torchvision
-# CPU version
-RUN pip install --no-cache-dir torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu
-
 # Install Nemo after core packages
 RUN pip install --no-cache-dir 'nemo_toolkit['asr']'
 
