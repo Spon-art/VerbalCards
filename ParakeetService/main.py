@@ -10,7 +10,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"],  # Your Razor Page URL
+    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080", "http://0.0.0.0:8080", "http://host.docker.internal:8080", "http://verbalcards:8080"],  # Your Razor Page URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
