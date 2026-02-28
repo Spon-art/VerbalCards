@@ -2,42 +2,82 @@
 @model VerbalCards.Pages.parakeet_asr
 
 @{
-ViewData["Title"] = "VerbalCards";
-Layout = "Shared/_Layout";
+    ViewData["Title"] = "VerbalCards";
+    Layout = "Shared/_Layout";
 }
 
 <div class="center">
     <h2>Transcribe Audio</h2>
-    <form id="transcribeForm" enctype="multipart/form-data">
-        <input type="file" id="audioFile" name="file" accept="audio/mpeg,audio/wav" required />
+    <form id="transcribeForm">
+        <button type="button" id="recordButton">Start Recording</button>
         <br/><br/>
-        <button type="submit">Transcribe</button>
+        <div id="status">Ready to record</div>
     </form>
 
     <div id="result"></div>
 </div>
 
 <script>
-    document.getElementById("transcribeForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+    const recordButton = document.getElementById("recordButton");
+    const statusDiv = document.getElementById("status");
+    const resultDiv = document.getElementById("result");
 
-        const fileInput = document.getElementById("audioFile");
-        const file = fileInput.files[0];
-        const formData = new FormData();
-        formData.append("file", file);
+    recordButton.addEventListener("click", async () => {
+        if (!isRecording) {
+            // Start recording
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
 
-        try {
-            const response = await fetch("http://localhost:8000/transcribe", {
-                method: "POST",
-                body: formData
-            });
+                mediaRecorder.addEventListener("dataavailable", event => {
+                    audioChunks.push(event.data);
+                });
 
-            const data = await response.json();
-            document.getElementById("result").innerHTML =
-                `<p>Transcription: ${data.transcription}</p>`;
-        } catch (error) {
-            document.getElementById("result").innerHTML =
-                `<p>Error: ${error.message}</p>`;
+                mediaRecorder.addEventListener("stop", async () => {
+                    statusDiv.textContent = "Processing...";
+                    
+                    // Create a blob from the recorded chunks
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    
+                    // Create form data and send to backend
+                    const formData = new FormData();
+                    formData.append("file", audioBlob, "recording.wav");
+
+                    try {
+                        const response = await fetch("http://localhost:8000/transcribe", {
+                            method: "POST",
+                            body: formData
+                        });
+
+                        const data = await response.json();
+                        resultDiv.innerHTML = `<p>Transcription: ${data.transcription}</p>`;
+                    } catch (error) {
+                        resultDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+                    } finally {
+                        statusDiv.textContent = "Ready to record";
+                    }
+                });
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordButton.textContent = "Stop Recording";
+                statusDiv.textContent = "Recording...";
+            } catch (error) {
+                resultDiv.innerHTML = `<p>Microphone access denied: ${error.message}</p>`;
+                statusDiv.textContent = "Error";
+            }
+        } else {
+            // Stop recording
+            mediaRecorder.stop();
+            isRecording = false;
+            recordButton.textContent = "Start Recording";
+            
+            // Stop all audio tracks to turn off microphone
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
         }
     });
-</script>   
+</script>
