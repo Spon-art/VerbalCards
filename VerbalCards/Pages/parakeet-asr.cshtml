@@ -1,0 +1,43 @@
+@page "/transcribe"
+@model VerbalCards.Pages.parakeet_asr
+
+@{
+    ViewData["Title"] = "VerbalCards";
+    Layout = "Shared/_Layout";
+}
+
+<div class="center">
+    <h2>Transcribe Audio</h2>
+    <form id="transcribeForm" enctype="multipart/form-data">
+        <input type="file" id="audioFile" name="file" accept="audio/mpeg,audio/wav" required />
+        <br/><br/>
+        <button type="submit">Transcribe</button>
+    </form>
+    
+    <div id="result"></div>
+</div>   
+
+<script>
+document.getElementById("transcribeForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    
+    const fileInput = document.getElementById("audioFile");
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    try {
+        const response = await fetch("http://localhost:8000/transcribe", {
+            method: "POST",
+            body: formData
+        });
+        
+        const data = await response.json();
+        document.getElementById("result").innerHTML = 
+            `<p>Transcription: ${data.transcription}</p>`;
+    } catch (error) {
+        document.getElementById("result").innerHTML = 
+            `<p>Error: ${error.message}</p>`;
+    }
+});
+</script>   
