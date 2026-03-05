@@ -1,6 +1,5 @@
 ﻿services:
   verbalcards:
-    image: verbalcards
     build:
       context: .
       dockerfile: VerbalCards/Dockerfile
@@ -19,8 +18,6 @@
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    depends_on:
-      - verbalcards
 
   mongo:
     image: mongo
