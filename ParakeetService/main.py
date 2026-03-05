@@ -34,4 +34,4 @@ async def transcribe(file: UploadFile = File(...)):
     
     # Transcribe
     transcript = asr_model.transcribe([temp_path])
-    return {"transcription": transcript[0].text} 
+    return {"transcription": transcript[0].text}
