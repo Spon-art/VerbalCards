@@ -361,8 +361,8 @@ public static class FlashcardEndpoints
         accuracy = Math.Min(100, accuracy + orderBonus);
         
         // Generate feedback
-        string feedback = GetFeedbackMessage(accuracy, correctWords, expectedWords.Length);
-        string detailedAnalysis = GenerateDetailedAnalysis(accuracy, correctWords, expectedWords.Length, wordMatches);
+        string feedback = GetFeedbackMessage(accuracy);
+        string detailedAnalysis = GenerateDetailedAnalysis(correctWords, expectedWords.Length, wordMatches);
         
         return new PronunciationCheckResult
         {
@@ -380,35 +380,26 @@ public static class FlashcardEndpoints
 
     private static (int index, string word) FindFuzzyMatch(string target, string[] userWords, HashSet<int> matchedIndices)
     {
-        for (int i = 0; i < userWords.Length; i++)
+        for (var i = 0; i < userWords.Length; i++)
         {
-            if (!matchedIndices.Contains(i))
-            {
-                var userWord = userWords[i];
+            if (matchedIndices.Contains(i)) continue;
+            var userWord = userWords[i];
                 
-                // Check if words are similar
-                if (userWord.Length > 2)
-                {
-                    if (userWord.Contains(target) || target.Contains(userWord))
-                    {
-                        return (i, userWord);
-                    }
-                    
-                    if (LevenshteinDistance(userWord, target) <= 2)
-                    {
-                        return (i, userWord);
-                    }
-                    
-                    // Check for common pronunciation variations
-                    if (IsPronunciationVariant(userWord, target))
-                    {
-                        return (i, userWord);
-                    }
-                }
+            // Check if words are similar
+            if (userWord.Length <= 2) continue;
+            if (userWord.Contains(target) || target.Contains(userWord) || LevenshteinDistance(userWord, target) <= 2)
+            {
+                return (i, userWord);
+            }
+
+            // Check for common pronunciation variations
+            if (IsPronunciationVariant(userWord, target))
+            {
+                return (i, userWord);
             }
         }
         
-        return (-1, null);
+        return (-1, null)!;
     }
 
 private static bool IsPronunciationVariant(string word1, string word2)
@@ -591,7 +582,7 @@ private static bool IsPronunciationVariant(string word1, string word2)
         return Math.Min(15, bonus);
     }
 
-    private static string GetFeedbackMessage(int accuracy, int correctWords, int totalWords)
+    private static string GetFeedbackMessage(int accuracy)
     {
         if (accuracy >= 95) return "Outstanding! Perfect pronunciation! 🌟";
         if (accuracy >= 85) return "Excellent! Very clear! ✨";
@@ -602,7 +593,7 @@ private static bool IsPronunciationVariant(string word1, string word2)
         return "Try again, take your time with each word 💪";
     }
 
-    private static string GenerateDetailedAnalysis(int accuracy, int correctWords, int totalWords, List<WordMatch> wordMatches)
+    private static string GenerateDetailedAnalysis(int correctWords, int totalWords, List<WordMatch> wordMatches)
     {
         if (totalWords == 0) return "No words to compare";
         
