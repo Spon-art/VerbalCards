@@ -1,83 +1,682 @@
-@page "/transcribe"
+@page "/verbal-flashcards"
 @model VerbalCards.Pages.parakeet_asr
 
 @{
-    ViewData["Title"] = "VerbalCards";
-    Layout = "Shared/_Layout";
+ViewData["Title"] = "Verbal Flashcards";
+Layout = "Shared/_Layout";
 }
 
-<div class="center">
-    <h2>Transcribe Audio</h2>
-    <form id="transcribeForm">
-        <button type="button" id="recordButton">Start Recording</button>
-        <br/><br/>
-        <div id="status">Ready to record</div>
-    </form>
+<link rel="stylesheet" href="~/css/flashcards.css" />
 
-    <div id="result"></div>
+<div class="flashcard-container">
+    <!-- Header with stats and filters -->
+    <div class="header">
+        <div class="title-section">
+            <h2>🎯 Verbal Flashcards</h2>
+            <div class="filters">
+                <select id="categoryFilter" class="filter-select">
+                    <option value="">All Categories</option>
+                </select>
+                <select id="difficultyFilter" class="filter-select">
+                    <option value="">All Difficulties</option>
+                    <option value="Beginner">Beginner</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                </select>
+                <button id="applyFiltersBtn" class="filter-btn">Apply Filters</button>
+            </div>
+        </div>
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-label">Progress:</span>
+                <span id="cardCounter">0/0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Score:</span>
+                <span id="scoreDisplay">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Streak:</span>
+                <span id="streakDisplay">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main flashcard -->
+    <div class="flashcard" id="flashcard">
+        <div class="card-content">
+            <!-- Loading state -->
+            <div id="loadingState" class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading flashcards...</p>
+            </div>
+
+            <!-- Flashcard content (hidden while loading) -->
+            <div id="flashcardContent" style="display: none;">
+                <!-- Prompt section -->
+                <div class="prompt-section">
+                    <span class="badge" id="difficultyBadge">Beginner</span>
+                    <span class="badge" id="categoryBadge">Greetings</span>
+                    <h3 class="prompt-label">Say this:</h3>
+                    <div id="currentPrompt" class="prompt-text">Loading...</div>
+                    <div id="phoneticHint" class="phonetic-hint"></div>
+                </div>
+
+                <!-- Hint section (collapsible) -->
+                <div class="hint-section">
+                    <button type="button" id="showHintBtn" class="hint-toggle">
+                        <span class="hint-icon">💡</span>
+                        <span class="hint-text">Show Hint</span>
+                    </button>
+                    <div id="hintContent" class="hint-content" style="display: none;">
+                        <div class="hint-box">
+                            <p id="currentHint"></p>
+                            <p id="exampleSentence" class="example-sentence"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recording section -->
+                <div class="recording-section">
+                    <button type="button" id="recordButton" class="record-btn">
+                        <span class="record-icon">🎤</span>
+                        <span class="record-text">Start Recording</span>
+                    </button>
+
+                    <div id="status" class="status-message">Ready to record</div>
+
+                    <!-- Recording visualization -->
+                    <div id="recordingVisualization" class="recording-visualization" style="display: none;">
+                        <div class="sound-wave">
+                            <span></span><span></span><span></span><span></span><span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Result section -->
+                <div id="resultSection" class="result-section" style="display: none;">
+                    <h4>Your attempt:</h4>
+                    <div id="userSpeech" class="user-speech"></div>
+
+                    <div class="feedback">
+                        <div class="accuracy-meter">
+                            <div class="accuracy-label">Accuracy:</div>
+                            <div class="progress-bar">
+                                <div id="accuracyProgress" class="progress-fill" style="width: 0%"></div>
+                            </div>
+                            <span id="accuracyPercentage" class="accuracy-percentage">0%</span>
+                        </div>
+
+                        <div id="feedbackMessage" class="feedback-message"></div>
+                        <div id="detailedAnalysis" class="detailed-analysis"></div>
+                    </div>
+
+                    <!-- Word-by-word breakdown -->
+                    <div id="wordBreakdown" class="word-breakdown" style="display: none;">
+                        <h5>Word breakdown:</h5>
+                        <div id="wordList" class="word-list"></div>
+                    </div>
+                </div>
+
+                <!-- Navigation and actions -->
+                <div class="action-buttons">
+                    <div class="navigation-buttons">
+                        <button type="button" id="prevButton" class="nav-btn" disabled>← Previous</button>
+                        <button type="button" id="nextButton" class="nav-btn" disabled>Next →</button>
+                    </div>
+                    <div class="utility-buttons">
+                        <button type="button" id="shuffleBtn" class="utility-btn" title="Shuffle cards">🔄</button>
+                        <button type="button" id="repeatBtn" class="utility-btn" title="Repeat this card">🔁</button>
+                        <button type="button" id="infoBtn" class="utility-btn" title="Card info">ℹ️</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress modal (hidden by default) -->
+    <div id="infoModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Card Information</h3>
+            <div id="modalContent"></div>
+        </div>
+    </div>
 </div>
 
 <script>
+    // State management
     let mediaRecorder;
     let audioChunks = [];
     let isRecording = false;
+    let flashcards = [];
+    let filteredFlashcards = [];
+    let currentCardIndex = 0;
+    let totalScore = 0;
+    let currentStreak = 0;
+    let categories = [];
+
+    // DOM elements
     const recordButton = document.getElementById("recordButton");
     const statusDiv = document.getElementById("status");
-    const resultDiv = document.getElementById("result");
+    const currentPrompt = document.getElementById("currentPrompt");
+    const phoneticHint = document.getElementById("phoneticHint");
+    const cardCounter = document.getElementById("cardCounter");
+    const scoreDisplay = document.getElementById("scoreDisplay");
+    const streakDisplay = document.getElementById("streakDisplay");
+    const prevButton = document.getElementById("prevButton");
+    const nextButton = document.getElementById("nextButton");
+    const showHintBtn = document.getElementById("showHintBtn");
+    const hintContent = document.getElementById("hintContent");
+    const currentHint = document.getElementById("currentHint");
+    const exampleSentence = document.getElementById("exampleSentence");
+    const resultSection = document.getElementById("resultSection");
+    const userSpeech = document.getElementById("userSpeech");
+    const accuracyProgress = document.getElementById("accuracyProgress");
+    const accuracyPercentage = document.getElementById("accuracyPercentage");
+    const feedbackMessage = document.getElementById("feedbackMessage");
+    const detailedAnalysis = document.getElementById("detailedAnalysis");
+    const wordBreakdown = document.getElementById("wordBreakdown");
+    const wordList = document.getElementById("wordList");
+    const difficultyBadge = document.getElementById("difficultyBadge");
+    const categoryBadge = document.getElementById("categoryBadge");
+    const recordingVisualization = document.getElementById("recordingVisualization");
+    const loadingState = document.getElementById("loadingState");
+    const flashcardContent = document.getElementById("flashcardContent");
+    const categoryFilter = document.getElementById("categoryFilter");
+    const difficultyFilter = document.getElementById("difficultyFilter");
+    const applyFiltersBtn = document.getElementById("applyFiltersBtn");
+    const shuffleBtn = document.getElementById("shuffleBtn");
+    const repeatBtn = document.getElementById("repeatBtn");
+    const infoBtn = document.getElementById("infoBtn");
+    const infoModal = document.getElementById("infoModal");
+    const closeModal = document.querySelector(".close-modal");
 
-    recordButton.addEventListener("click", async () => {
-        if (!isRecording) {
-            // Start recording
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
+    // Initialize the app
+    async function initialize() {
+        await loadFlashcards();
+        setupEventListeners();
+    }
 
-                mediaRecorder.addEventListener("dataavailable", event => {
-                    audioChunks.push(event.data);
-                });
+    // Load flashcards
+    async function loadFlashcards() {
+        try {
+            loadingState.style.display = "flex";
+            flashcardContent.style.display = "none";
 
-                mediaRecorder.addEventListener("stop", async () => {
-                    statusDiv.textContent = "Processing...";
-                    
-                    // Create a blob from the recorded chunks
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                    
-                    // Create form data and send to backend
-                    const formData = new FormData();
-                    formData.append("file", audioBlob, "recording.wav");
+            const category = categoryFilter.value;
+            const difficulty = difficultyFilter.value;
 
-                    try {
-                        const response = await fetch("http://localhost:8000/transcribe", {
-                            method: "POST",
-                            body: formData
-                        });
+            let url = "/flashcards";
+            const params = new URLSearchParams();
+            if (category) params.append("category", category);
+            if (difficulty) params.append("difficulty", difficulty);
+            if (params.toString()) url += "?" + params.toString();
 
-                        const data = await response.json();
-                        resultDiv.innerHTML = `<p>Transcription: ${data.transcription}</p>`;
-                    } catch (error) {
-                        resultDiv.innerHTML = `<p>Error: ${error.message}</p>`;
-                    } finally {
-                        statusDiv.textContent = "Ready to record";
-                    }
-                });
+            const response = await fetch(url);
+            if (response.ok) {
+                flashcards = await response.json();
+                filteredFlashcards = [...flashcards];
 
-                mediaRecorder.start();
-                isRecording = true;
-                recordButton.textContent = "Stop Recording";
-                statusDiv.textContent = "Recording...";
-            } catch (error) {
-                resultDiv.innerHTML = `<p>Microphone access denied: ${error.message}</p>`;
-                statusDiv.textContent = "Error";
+                // Extract unique categories for filter
+                updateCategoryFilter();
+
+                if (filteredFlashcards.length === 0) {
+                    showNoCardsMessage();
+                } else {
+                    currentCardIndex = 0;
+                    updateCard();
+                    flashcardContent.style.display = "block";
+                }
             }
-        } else {
-            // Stop recording
-            mediaRecorder.stop();
-            isRecording = false;
-            recordButton.textContent = "Start Recording";
-            
-            // Stop all audio tracks to turn off microphone
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        } catch (error) {
+            console.error("Error loading flashcards:", error);
+            statusDiv.textContent = "Error loading flashcards";
+        } finally {
+            loadingState.style.display = "none";
         }
-    });
+    }
+
+    // Update category filter dropdown
+    function updateCategoryFilter() {
+        const categories = [...new Set(flashcards.map(c => c.category))];
+        categoryFilter.innerHTML = '<option value="">All Categories</option>';
+        categories.forEach(category => {
+            if (category) {
+                const option = document.createElement("option");
+                option.value = category;
+                option.textContent = category;
+                categoryFilter.appendChild(option);
+            }
+        });
+    }
+
+    // Show message when no cards match filters
+    function showNoCardsMessage() {
+        flashcardContent.style.display = "none";
+        const existingMsg = document.querySelector(".no-cards-message");
+        if (existingMsg) existingMsg.remove();
+
+        const noCardsMsg = document.createElement("div");
+        noCardsMsg.className = "no-cards-message";
+        noCardsMsg.innerHTML = `
+            <p>😕 No flashcards match your filters</p>
+            <button onclick="clearFilters()" class="filter-btn">Clear Filters</button>
+        `;
+        document.querySelector(".flashcard").appendChild(noCardsMsg);
+    }
+
+    // Clear all filters
+    window.clearFilters = function() {
+        categoryFilter.value = "";
+        difficultyFilter.value = "";
+        loadFlashcards();
+    };
+
+    // Update current card display
+    function updateCard() {
+        if (filteredFlashcards.length === 0) return;
+
+        const card = filteredFlashcards[currentCardIndex];
+        currentPrompt.textContent = card.prompt;
+        phoneticHint.textContent = card.phoneticHint || "";
+        currentHint.textContent = card.hint || "No hint available";
+        exampleSentence.textContent = card.example || "";
+        difficultyBadge.textContent = card.difficulty || "Beginner";
+        categoryBadge.textContent = card.category || "General";
+
+        // Update badges based on difficulty
+        difficultyBadge.className = `badge difficulty-${(card.difficulty || "beginner").toLowerCase()}`;
+
+        cardCounter.textContent = `${currentCardIndex + 1}/${filteredFlashcards.length}`;
+
+        // Hide result section when changing cards
+        resultSection.style.display = "none";
+        hintContent.style.display = "none";
+        showHintBtn.querySelector('.hint-text').textContent = "Show Hint";
+
+        // Update navigation buttons
+        prevButton.disabled = currentCardIndex === 0;
+        nextButton.disabled = currentCardIndex === filteredFlashcards.length - 1;
+
+        // Reset recording state
+        if (isRecording) {
+            stopRecording();
+        }
+        recordButton.disabled = false;
+        recordButton.querySelector('.record-text').textContent = "Start Recording";
+        statusDiv.textContent = "Ready to record";
+        statusDiv.className = "status-message";
+    }
+
+    // Stop recording function
+    function stopRecording() {
+        if (mediaRecorder && isRecording) {
+            mediaRecorder.stop();
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            isRecording = false;
+            recordButton.querySelector('.record-text').textContent = "Start Recording";
+            recordingVisualization.style.display = "none";
+        }
+    }
+
+    // Set up event listeners
+    function setupEventListeners() {
+        // Recording button
+        recordButton.addEventListener("click", toggleRecording);
+
+        // Navigation
+        prevButton.addEventListener("click", () => {
+            if (currentCardIndex > 0) {
+                currentCardIndex--;
+                updateCard();
+            }
+        });
+
+        nextButton.addEventListener("click", () => {
+            if (currentCardIndex < filteredFlashcards.length - 1) {
+                currentCardIndex++;
+                updateCard();
+            }
+        });
+
+        // Hint toggle
+        showHintBtn.addEventListener("click", toggleHint);
+
+        // Filter button
+        applyFiltersBtn.addEventListener("click", loadFlashcards);
+
+        // Shuffle button
+        shuffleBtn.addEventListener("click", shuffleCards);
+
+        // Repeat button
+        repeatBtn.addEventListener("click", () => {
+            updateCard(); // Just refreshes the current card
+        });
+
+        // Info button
+        infoBtn.addEventListener("click", showCardInfo);
+
+        // Close modal
+        if (closeModal) {
+            closeModal.addEventListener("click", () => {
+                infoModal.style.display = "none";
+            });
+        }
+
+        // Click outside modal to close
+        window.addEventListener("click", (event) => {
+            if (event.target === infoModal) {
+                infoModal.style.display = "none";
+            }
+        });
+    }
+
+    // Toggle recording
+    async function toggleRecording() {
+        if (!isRecording) {
+            await startRecording();
+        } else {
+            stopRecording();
+        }
+    }
+
+    // Start recording
+    async function startRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            mediaRecorder.addEventListener("dataavailable", event => {
+                audioChunks.push(event.data);
+            });
+
+            mediaRecorder.addEventListener("stop", handleRecordingStop);
+
+            mediaRecorder.start();
+            isRecording = true;
+            recordButton.querySelector('.record-text').textContent = "Stop Recording";
+            statusDiv.textContent = "Recording...";
+            statusDiv.className = "status-message recording";
+            recordingVisualization.style.display = "block";
+
+            // Hide previous results
+            resultSection.style.display = "none";
+
+        } catch (error) {
+            statusDiv.textContent = "Microphone access denied";
+            statusDiv.className = "status-message error";
+            alert("Please allow microphone access to use flashcards");
+        }
+    }
+
+    // Handle recording stop and send to FastAPI directly
+    async function handleRecordingStop() {
+        statusDiv.textContent = "Processing...";
+        statusDiv.className = "status-message processing";
+        recordingVisualization.style.display = "none";
+
+        // Create audio blob from recorded chunks
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+
+        // Create form data for FastAPI
+        const formData = new FormData();
+        formData.append("file", audioBlob, "recording.wav");
+
+        try {
+            // Call FastAPI directly (like in your Upload page)
+            const fastApiResponse = await fetch('http://localhost:8000/transcribe', {
+                method: 'POST',
+                body: formData,
+                mode: 'cors'
+            });
+
+            if (!fastApiResponse.ok) {
+                throw new Error(`Transcription failed: ${fastApiResponse.status}`);
+            }
+
+            const data = await fastApiResponse.json();
+            const transcription = data.transcription;
+
+            // Check pronunciation locally
+            checkPronunciation(transcription);
+
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            statusDiv.textContent = "Ready to record";
+            statusDiv.className = "status-message";
+        }
+    }
+
+    // Check pronunciation (client-side comparison)
+    function checkPronunciation(userSpeech) {
+        const currentCard = filteredFlashcards[currentCardIndex];
+        const expectedText = currentCard.expectedText || currentCard.prompt;
+
+        const result = calculateAccuracy(userSpeech, expectedText);
+        displayResults(userSpeech, result);
+    }
+
+    // Calculate accuracy between user speech and expected text
+    function calculateAccuracy(userSpeech, expectedText) {
+        userSpeech = userSpeech?.toLowerCase().trim() || "";
+        expectedText = expectedText?.toLowerCase().trim() || "";
+
+        // Remove punctuation
+        userSpeech = userSpeech.replace(/[^\w\s']/g, '');
+        expectedText = expectedText.replace(/[^\w\s']/g, '');
+
+        const userWords = userSpeech.split(/\s+/).filter(w => w.length > 0);
+        const expectedWords = expectedText.split(/\s+/).filter(w => w.length > 0);
+
+        const wordMatches = [];
+        let correctWords = 0;
+        const matchedIndices = new Set();
+
+        // First pass: exact matches
+        for (let i = 0; i < expectedWords.length; i++) {
+            const expectedWord = expectedWords[i];
+            let found = false;
+
+            for (let j = 0; j < userWords.length; j++) {
+                if (!matchedIndices.has(j) && userWords[j] === expectedWord) {
+                    matchedIndices.add(j);
+                    correctWords++;
+                    wordMatches.push({ word: expectedWord, isCorrect: true, suggestedWord: null });
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                wordMatches.push({ word: expectedWord, isCorrect: false, suggestedWord: "?" });
+            }
+        }
+
+        // Calculate accuracy percentage
+        let accuracy = expectedWords.length > 0
+            ? Math.round((correctWords / expectedWords.length) * 100)
+            : 0;
+
+        // Add small bonus for word order
+        let orderBonus = 0;
+        for (let i = 0; i < Math.min(userWords.length, expectedWords.length); i++) {
+            if (i < userWords.length && i < expectedWords.length && userWords[i] === expectedWords[i]) {
+                orderBonus += 2;
+            }
+        }
+        accuracy = Math.min(100, accuracy + orderBonus);
+
+        // Generate feedback
+        const feedback = getFeedbackMessage(accuracy);
+        const detailedAnalysis = generateDetailedAnalysis(accuracy, correctWords, expectedWords.length, wordMatches);
+
+        return {
+            accuracy: accuracy,
+            feedback: feedback,
+            wordMatches: wordMatches,
+            detailedAnalysis: detailedAnalysis
+        };
+    }
+
+    // Get feedback message based on accuracy
+    function getFeedbackMessage(accuracy) {
+        if (accuracy >= 95) return "Outstanding! Perfect pronunciation! 🌟";
+        if (accuracy >= 85) return "Excellent! Very clear! ✨";
+        if (accuracy >= 70) return "Good job! Keep practicing! 👍";
+        if (accuracy >= 50) return "Not bad! Focus on problem words 🎯";
+        if (accuracy >= 30) return "Keep trying! Listen carefully 📚";
+        if (accuracy >= 10) return "Start slowly, say each word clearly 🗣️";
+        return "Try again, take your time with each word 💪";
+    }
+
+    // Generate detailed analysis
+    function generateDetailedAnalysis(accuracy, correctWords, totalWords, wordMatches) {
+        if (totalWords === 0) return "No words to compare";
+
+        const incorrectWords = wordMatches.filter(w => !w.isCorrect).map(w => w.word);
+
+        if (incorrectWords.length === 0)
+            return `Perfect! All ${totalWords} words pronounced correctly!`;
+
+        if (incorrectWords.length === 1)
+            return `Almost perfect! Just one word to work on: '${incorrectWords[0]}'`;
+
+        const problemWords = incorrectWords.slice(0, 3).map(w => `'${w}'`).join(", ");
+        if (incorrectWords.length > 3)
+            return `You got ${correctWords} out of ${totalWords} words right. Focus on: ${problemWords} and ${incorrectWords.length - 3} more`;
+
+        return `You got ${correctWords} out of ${totalWords} words right. Focus on: ${problemWords}`;
+    }
+
+    // Display transcription and accuracy results
+    function displayResults(userSpeech, result) {
+        const accuracy = result.accuracy;
+
+        // Display user's speech
+        userSpeech.textContent = userSpeech;
+
+        // Update progress bar with animation
+        accuracyProgress.style.transition = "width 0.5s ease";
+        accuracyProgress.style.width = accuracy + "%";
+        accuracyPercentage.textContent = accuracy + "%";
+
+        // Update score and streak
+        updateScoreAndStreak(accuracy);
+
+        // Display feedback
+        feedbackMessage.textContent = result.feedback;
+        feedbackMessage.className = `feedback-message ${getFeedbackClass(accuracy)}`;
+
+        // Display detailed analysis
+        if (result.detailedAnalysis) {
+            detailedAnalysis.textContent = result.detailedAnalysis;
+            detailedAnalysis.style.display = "block";
+        }
+
+        // Display word breakdown if available
+        if (result.wordMatches && result.wordMatches.length > 0) {
+            displayWordBreakdown(result.wordMatches);
+            wordBreakdown.style.display = "block";
+        }
+
+        // Show result section
+        resultSection.style.display = "block";
+
+        // Scroll to results smoothly
+        resultSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    // Display word-by-word breakdown
+    function displayWordBreakdown(wordMatches) {
+        wordList.innerHTML = "";
+        wordMatches.forEach(match => {
+            const wordElement = document.createElement("div");
+            wordElement.className = `word-item ${match.isCorrect ? 'correct' : 'incorrect'}`;
+            wordElement.innerHTML = `
+                <span class="word">${match.word}</span>
+                <span class="status">${match.isCorrect ? '✓' : '✗'}</span>
+                ${match.suggestedWord && !match.isCorrect ?
+                `<span class="suggestion">→ ${match.suggestedWord}</span>` : ''}
+            `;
+            wordList.appendChild(wordElement);
+        });
+    }
+
+    // Update score and streak based on accuracy
+    function updateScoreAndStreak(accuracy) {
+        if (accuracy >= 70) {
+            totalScore += accuracy;
+            currentStreak++;
+        } else {
+            currentStreak = 0;
+        }
+
+        scoreDisplay.textContent = Math.round(totalScore);
+        streakDisplay.textContent = currentStreak;
+
+        // Add streak animation if streak > 0
+        if (currentStreak > 0) {
+            streakDisplay.classList.add('streak-active');
+        } else {
+            streakDisplay.classList.remove('streak-active');
+        }
+    }
+
+    // Get CSS class for feedback based on accuracy
+    function getFeedbackClass(accuracy) {
+        if (accuracy >= 70) return "success";
+        if (accuracy >= 40) return "warning";
+        return "error";
+    }
+
+    // Toggle hint display
+    function toggleHint() {
+        if (hintContent.style.display === "none") {
+            hintContent.style.display = "block";
+            showHintBtn.querySelector('.hint-text').textContent = "Hide Hint";
+        } else {
+            hintContent.style.display = "none";
+            showHintBtn.querySelector('.hint-text').textContent = "Show Hint";
+        }
+    }
+
+    // Shuffle cards
+    function shuffleCards() {
+        filteredFlashcards = [...filteredFlashcards].sort(() => Math.random() - 0.5);
+        currentCardIndex = 0;
+        updateCard();
+    }
+
+    // Show card information modal
+    function showCardInfo() {
+        const card = filteredFlashcards[currentCardIndex];
+        if (!card) return;
+
+        const modalContent = document.getElementById("modalContent");
+        modalContent.innerHTML = `
+            <p><strong>Prompt:</strong> ${card.prompt}</p>
+            <p><strong>Expected:</strong> ${card.expectedText || card.prompt}</p>
+            <p><strong>Hint:</strong> ${card.hint || "No hint"}</p>
+            <p><strong>Example:</strong> ${card.example || "No example"}</p>
+            <p><strong>Phonetic:</strong> ${card.phoneticHint || "Not available"}</p>
+            <p><strong>Difficulty:</strong> ${card.difficulty || "Beginner"}</p>
+            <p><strong>Category:</strong> ${card.category || "General"}</p>
+        `;
+
+        infoModal.style.display = "block";
+    }
+
+    // Show error message
+    function showError(message) {
+        resultSection.style.display = "block";
+        userSpeech.textContent = "Error processing recording";
+        feedbackMessage.textContent = `Error: ${message}`;
+        feedbackMessage.className = "feedback-message error";
+    }
+
+    // Initialize on page load
+    document.addEventListener("DOMContentLoaded", initialize);
 </script>
