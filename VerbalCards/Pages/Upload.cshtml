@@ -11,7 +11,7 @@
 
     <form id="uploadForm" method="post" enctype="multipart/form-data">
         @Html.AntiForgeryToken()
-        <input type="file" name="AudioFile" accept=".mp3,audio/mpeg" />
+        <input type="file" name="AudioFile" accept=".mp3,audio/mpeg,audio/wav,audio/x-wav,audio/wave" />
         <br/><br/>
         <button type="submit">Upload</button>
     </form>
@@ -20,6 +20,24 @@
     {
         <p>Status: @Model.UploadResult.StatusCode</p>
         <p>Audio ID: @Model.UploadResult.AudioId</p>
+        
+        <!-- Add Transcribe button that appears after upload -->
+        <button id="transcribeBtn" 
+                class="btn btn-primary" 
+                data-audio-id="@Model.UploadResult.AudioId">
+            Transcribe Audio
+        </button>
+        
+        <!-- Add a div to display transcription result -->
+        <div id="transcriptionResult" style="margin-top: 20px; display: none;">
+            <h3>Transcription:</h3>
+            <p id="transcriptionText"></p>
+        </div>
+        
+        <!-- Add loading indicator -->
+        <div id="loadingSpinner" style="display: none;">
+            <p>Transcribing... Please wait.</p>
+        </div>
     }
 
     <!--
@@ -41,3 +59,98 @@
     -->
     
 </div>
+
+<script>
+    document.getElementById('transcribeBtn')?.addEventListener('click', async function() {
+        const audioId = this.dataset.audioId;
+        const transcribeBtn = this;
+        const spinner = document.getElementById('loadingSpinner');
+        const resultDiv = document.getElementById('transcriptionResult');
+        const transcriptionText = document.getElementById('transcriptionText');
+        
+        transcribeBtn.disabled = true;
+        spinner.style.display = 'block';
+        resultDiv.style.display = 'none';
+        
+        try {
+            // First, fetch the audio file from your server as a blob
+            const audioResponse = await fetch(`/audio/get/${audioId}`);
+            
+            if (!audioResponse.ok) {
+                throw new Error(`Failed to fetch audio: ${audioResponse.status}`);
+            }
+            
+            // Get the audio data as a blob
+            const audioBlob = await audioResponse.blob();
+            
+            // Create a File object from the blob (with a filename)
+            const fileName = audioResponse.headers.get('content-disposition') 
+                ?.split('filename=')[1]?.replace(/"/g, '') || 'audio.wav';
+            
+            const file = new File([audioBlob], fileName, { 
+                type: audioBlob.type || 'audio/wav' 
+            });
+            
+            // Create form data for the FastAPI endpoint
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Call FastAPI directly
+            const fastApiResponse = await fetch('http://localhost:8000/transcribe', {
+                method: 'POST',
+                body: formData,
+                mode: 'cors' // Explicitly set CORS mode
+            });
+            
+            if (!fastApiResponse.ok) {
+                throw new Error(`Transcription failed: ${fastApiResponse.status}`);
+            }
+            
+            const result = await fastApiResponse.json();
+            
+            transcriptionText.textContent = result.transcription;
+            resultDiv.style.display = 'block';
+            
+        } catch (error) {
+            console.error('Transcription error:', error);
+            alert('Error: ' + error.message);
+        } finally {
+            transcribeBtn.disabled = false;
+            spinner.style.display = 'none';
+        }
+    });
+</script>
+
+<style>
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    
+    .btn-primary:hover {
+        background-color: #0056b3;
+    }
+    
+    .btn-primary:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+    
+    #loadingSpinner {
+        margin-top: 20px;
+        color: #666;
+    }
+    
+    #transcriptionResult {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+    }
+</style>

@@ -25,6 +25,7 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
 
 builder.Services.AddScoped<IAudioService, MongoAudioService>();
 builder.Services.AddTransient<IAudioUploader, MongoAudioUploader>();
+builder.Services.AddScoped<IAsrService, AsrService>();
 
 var app = builder.Build();
 
@@ -37,6 +38,7 @@ app.UseAntiforgery();
 app.MapRazorPages();
 
 var audioGroup = app.MapGroup("/audio");
+var flashcardGroup = app.MapGroup("/flashcards");
 
 if (app.Environment.IsDevelopment())
 {
@@ -46,6 +48,7 @@ if (app.Environment.IsDevelopment())
 }
 
 AudioEndpoints.MapEndpoints(audioGroup);
+FlashcardEndpoints.MapEndpoints(flashcardGroup);
 
 app.UseRouting();
 

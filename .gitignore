@@ -6,3 +6,5 @@ riderModule.iml
 .idea/.idea.VerbalCards/Docker/compose.generated.override.yml
 /.idea
 .DS_Store
+/ParakeetService/__pycache__
+/.idea
