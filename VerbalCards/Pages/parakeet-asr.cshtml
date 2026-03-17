@@ -487,8 +487,7 @@ Layout = "Shared/_Layout";
 
             // Check if word matches (with Danish normalization)
             if (userWord === expectedWord ||
-                normalizeDanishWord(userWord) === normalizeDanishWord(expectedWord) ||
-                isDanishPronunciationVariant(userWord, expectedWord)) {
+                normalizeDanishWord(userWord) === normalizeDanishWord(expectedWord)) {
 
                 correctWords++;
                 correctPositions++;
@@ -520,8 +519,7 @@ Layout = "Shared/_Layout";
 
                 // Check if words match (with Danish support)
                 if (userWord === expectedWord ||
-                    normalizeDanishWord(userWord) === normalizeDanishWord(expectedWord) ||
-                    isDanishPronunciationVariant(userWord, expectedWord)) {
+                    normalizeDanishWord(userWord) === normalizeDanishWord(expectedWord)) {
 
                     matchedIndices.add(j);
                     correctWords++;
@@ -596,7 +594,6 @@ Layout = "Shared/_Layout";
             'ae': 'æ',
             'oe': 'ø',
             'hv': 'v',     // "hv" in "hvornår" often sounds like "v"
-            'dt': 'd',     // "dt" at end of words like "mødet" → "møde"
         };
 
         // Replace common variations
@@ -612,78 +609,32 @@ Layout = "Shared/_Layout";
         return word;
     }
 
-    // Add this function to check Danish pronunciation variants
-    function isDanishPronunciationVariant(word1, word2) {
-        word1 = word1.toLowerCase();
-        word2 = word2.toLowerCase();
-
-        // Common Danish pronunciation variations
-        const variants = [
-            // "Hvornår" variations
-            ['hvornår', 'vornår', 'vornar', 'vorna', 'vornor', 'vorno'],
-            // "Mødet" variations
-            ['mødet', 'møde', 'møðet', 'møthet', 'møde'],
-            // Common patterns
-            ['er', 'ær', 'e'],
-            ['det', 'de', 'ðet'],
-            ['hvad', 'va', 'vad'],
-            ['hvem', 'vem'],
-            ['hvordan', 'vordan'],
-            ['ikke', 'ik'],
-            ['også', 'oså', 'osa'],
-            ['med', 'me', 'meth'],
-            ['god', 'go', 'goth'],
-            ['rød', 'rø', 'røth'],
-            ['sød', 'sø', 'søth'],
-            ['tid', 'ti', 'tith'],
-            ['kage', 'kae'],
-            ['tage', 'tae'],
-            ['sige', 'si'],
-            ['mig', 'mi'],
-            ['dig', 'di']
-        ];
-
-        for (let group of variants) {
-            if (group.includes(word1) && group.includes(word2)) {
-                return true;
-            }
-        }
-
-        // Handle soft D pattern
-        if ((word1.endsWith('d') && word2 === word1.slice(0, -1)) ||
-            (word2.endsWith('d') && word1 === word2.slice(0, -1))) {
-            return true;
-        }
-
-        return false;
-    }
-
     // Update getFeedbackMessage to include position information
     function getFeedbackMessage(accuracy, correctPositions, totalWords) {
-        if (accuracy >= 95) return "Fremragende! Helt perfekt! 🌟";
-        if (accuracy >= 85) return "Fantastisk! Næsten perfekt! ✨";
+        if (accuracy >= 95) return "Excellent! Totally perfect! 🌟";
+        if (accuracy >= 85) return "Great! Almost perfect! ✨";
         if (accuracy >= 70) {
             if (correctPositions === totalWords) {
-                return "Godt gået! Alle ord på rigtig plads! 👍";
+                return "Nice job! The words are in the right order! 👍";
             } else {
-                return "Godt gået! Prøv at fokusere på ordstillingen 🎯";
+                return "Nice job! Try to focus on word order 🎯";
             }
         }
         if (accuracy >= 50) {
             if (correctPositions < totalWords / 2) {
-                return "Ikke dårligt! Husk at ordstilling er vigtig på dansk 📝";
+                return "Not bad! Remember, word order is very important in danish 📝";
             } else {
-                return "Ikke dårligt! Bliv ved med at øve dig! 💪";
+                return "Not bad! Keep practicing! 💪";
             }
         }
-        if (accuracy >= 30) return "Bliv ved! Lyt godt efter og prøv igen 📚";
-        if (accuracy >= 10) return "Start langsomt, sig hvert ord tydeligt 🗣️";
-        return "Prøv igen, tag dig god tid med hvert ord 💪";
+        if (accuracy >= 30) return "Keep going! Try again 📚";
+        if (accuracy >= 10) return "Start slowly, say every word clearly 🗣️";
+        return "Try again, take your time with each word 💪";
     }
 
     // Update generateDetailedAnalysis to include position feedback
     function generateDetailedAnalysis(finalAccuracy, correctWords, correctPositions, totalWords, wordMatches) {
-        if (totalWords === 0) return "Ingen ord at sammenligne";
+        if (totalWords === 0) return "No words to compare";
 
         const incorrectWords = wordMatches.filter(w => !w.isCorrect);
         const outOfPositionWords = wordMatches.filter(w => w.isCorrect && !w.isInPosition);
@@ -691,27 +642,27 @@ Layout = "Shared/_Layout";
         let analysis = "";
 
         if (incorrectWords.length === 0 && outOfPositionWords.length === 0) {
-            return `Perfekt! Alle ${totalWords} ord udtalt korrekt og i rigtig rækkefølge! 🎉`;
+            return `Perfect! All ${totalWords} words are pronunced correctly and in the right order! 🎉`;
         }
 
         if (incorrectWords.length === 0 && outOfPositionWords.length > 0) {
             const positionMsg = outOfPositionWords.length === 1
-                ? `ord er på forkert plads: '${outOfPositionWords[0].word}' skulle være på plads ${outOfPositionWords[0].position + 1}`
-                : `ord er på forkert plads: ${outOfPositionWords.map(w => `'${w.word}'`).join(', ')}`;
+                ? `word is in the wrong place: '${outOfPositionWords[0].word}' should be at position ${outOfPositionWords[0].position + 1}`
+                : `word is in the wrong place: ${outOfPositionWords.map(w => `'${w.word}'`).join(', ')}`;
 
-            return `Du udtalte alle ord korrekt, men ${outOfPositionWords.length} ${positionMsg}. Fokuser på ordstilling! 📝`;
+            return `You pronunced every word correctly, but ${outOfPositionWords.length} ${positionMsg}. Focus on word order! 📝`;
         }
 
         if (incorrectWords.length === 1) {
-            return `Næsten perfekt! Kun ét ord at arbejde på: '${incorrectWords[0].word}'`;
+            return `Almost perfect! Only one word to work on: '${incorrectWords[0].word}'`;
         }
 
         const problemWords = incorrectWords.slice(0, 3).map(w => `'${w.word}'`).join(", ");
         if (incorrectWords.length > 3) {
-            return `Du fik ${correctWords} ud af ${totalWords} ord rigtigt. ${correctPositions} af dem var på rigtig plads. Fokuser på: ${problemWords} og ${incorrectWords.length - 3} flere`;
+            return `You got ${correctWords} out of ${totalWords} words correct. ${correctPositions} of them were in the right place. Focus on: ${problemWords} and ${incorrectWords.length - 3} more`;
         }
 
-        return `Du fik ${correctWords} ud af ${totalWords} ord rigtigt. ${correctPositions} af dem var på rigtig plads. Fokuser på: ${problemWords}`;
+        return `You got ${correctWords} out of ${totalWords} words correctly. ${correctPositions} of them were in the right place. Focus on: ${problemWords}`;
     }
 
     // Display transcription and accuracy results
@@ -760,9 +711,9 @@ Layout = "Shared/_Layout";
         const headerRow = document.createElement("div");
         headerRow.className = "word-breakdown-header";
         headerRow.innerHTML = `
-        <span class="word-header">Forventet ord</span>
-        <span class="pos-header">Position</span>
-        <span class="status-header">Status</span>
+        <span class="word-header">Expected words,</span>
+        <span class="pos-header">Position,</span>
+        <span class="status-header">Status:</span>
     `;
         wordList.appendChild(headerRow);
 
