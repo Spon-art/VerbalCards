@@ -590,3 +590,63 @@
         width: 100%;
     }
 }
+
+/* Add these styles for the word breakdown */
+.word-breakdown-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    padding: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.word-item {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    align-items: center;
+    padding: 8px;
+    margin: 4px 0;
+    border-radius: 4px;
+    gap: 5px;
+}
+
+.word-item.correct-position {
+    background: #d4edda;
+    color: #155724;
+}
+
+.word-item.correct-wrong-position {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.word-item.incorrect {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.position {
+    text-align: center;
+    font-weight: bold;
+}
+
+.position-info {
+    font-size: 0.8em;
+    color: #666;
+    margin-left: 5px;
+    grid-column: 1 / -1;
+}
+
+.word, .status {
+    text-align: center;
+}
+
+.suggestion {
+    font-size: 0.8em;
+    color: #666;
+    margin-left: 5px;
+    grid-column: 1 / -1;
+}
