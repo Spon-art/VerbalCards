@@ -178,57 +178,74 @@ public static class FlashcardEndpoints
             new Flashcard 
             { 
                 Id = "1", 
-                Prompt = "Hej, hvordan har du det?", 
-                Hint = "Common greeting",
+                Prompt = "Hello, how are you?", 
+                Hint = "Hej, hvordan har du det",
                 ExpectedText = "hej hvordan har du det",
                 Difficulty = "Beginner",
                 Category = "Greetings",
-                Example = "Hello, how are you today?",
-                PhoneticHint = "/həˈloʊ, haʊ ɑːr juː/"
             },
             new Flashcard 
             { 
                 Id = "2", 
-                Prompt = "Det er virkelig godt vejr i dag", 
-                Hint = "Talking about weather",
+                Prompt = "It is really nice weather today", 
+                Hint = "Det er virkelig godt vejr i dag",
                 ExpectedText = "det er virkelig godt vejr i dag",
                 Difficulty = "Beginner",
                 Category = "Weather",
-                Example = "The weather is nice today, let's go for a walk.",
-                PhoneticHint = "/ðə ˈweðər ɪz naɪs təˈdeɪ/"
             },
             new Flashcard 
             { 
                 Id = "3", 
-                Prompt = "Jeg vil gerne bestille en kaffe", 
-                Hint = "At a café",
+                Prompt = "I want to order a coffee", 
+                Hint = "Jeg vil gerne bestille en kaffe",
                 ExpectedText = "jeg vil gerne bestille en kaffe",
                 Difficulty = "Intermediate",
                 Category = "Food & Drink",
-                Example = "I would like to order coffee with milk, please.",
-                PhoneticHint = "/aɪ wʊd laɪk tuː ˈɔːrdər ˈkɔːfi/"
             },
             new Flashcard 
             { 
                 Id = "4", 
-                Prompt = "Kan du hjælpe mig?", 
-                Hint = "Asking for assistance",
+                Prompt = "Can you help me?", 
+                Hint = "Kan du hjælpe mig?",
                 ExpectedText = "kan du hjælpe mig",
                 Difficulty = "Beginner",
                 Category = "Requests",
-                Example = "Can you help me please? I'm lost.",
-                PhoneticHint = "/kæn juː help miː pliːz/"
             },
             new Flashcard 
             { 
                 Id = "5", 
-                Prompt = "Hvornår er mødet?", 
-                Hint = "Asking about schedule",
+                Prompt = "When is the meeting?", 
+                Hint = "Hvornår er mødet?",
                 ExpectedText = "hvornår er mødet",
                 Difficulty = "Intermediate",
                 Category = "Work",
-                Example = "What time is the meeting tomorrow?",
-                PhoneticHint = "/wʌt taɪm ɪz ðə ˈmiːtɪŋ/"
+            },
+            new Flashcard
+            {
+                Id = "6",
+                Prompt = "Coffee",
+                Hint = "kaffe",
+                ExpectedText = "kaffe",
+                Difficulty = "Beginner",
+                Category = "Food & Drink"
+            },
+            new Flashcard
+            {
+                Id = "7",
+                Prompt = "Cake",
+                Hint = "kage",
+                ExpectedText = "kage",
+                Difficulty = "Beginner",
+                Category = "Food & Drink"
+            },
+            new Flashcard
+            {
+                Id = "8",
+                Prompt = "Sausage",
+                Hint = "pølse",
+                ExpectedText = "pølse",
+                Difficulty = "Beginner",
+                Category = "Food & Drink"
             }
         };
     }
