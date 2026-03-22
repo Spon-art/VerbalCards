@@ -822,15 +822,27 @@ Layout = "Shared/_Layout";
         feedbackMessage.className = "feedback-message error";
     }
 
-    window.addEventListener("load", () => {
-        alert("Tryk OK for at starte talegenkendelse");
-        firstInteraction();
-    });
+    window.addEventListener("load", async () => {
+        try {
+            const permission = await navigator.permissions.query({ name: "microphone" });
 
-    function firstInteraction() {
-        toggleRecording();
-    }
+            if (permission.state === "granted") {
+                // Mikrofon er allerede tilladt → start optagelse med det samme
+                toggleRecording();
+            } else {
+                // Mikrofon ikke tilladt endnu → brug alert for at få en user gesture
+                alert("For at Talegenkeldelse kan fungere skal mikrofonen kunne benyttes. Tryk OK og derefter tillad brug af mikrofonen");
+                toggleRecording();
+            }
+
+        } catch (err) {
+            // Hvis permissions API ikke er understøttet (fx i Safari)
+            alert("For at Talegenkeldelse kan fungere skal mikrofonen kunne benyttes. Tryk OK og derefter tillad brug af mikrofonen");
+            toggleRecording();
+        }
+    });
 
     // Initialize on page load
     document.addEventListener("DOMContentLoaded", initialize);
+
 </script>
