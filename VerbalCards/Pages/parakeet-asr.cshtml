@@ -27,6 +27,12 @@ Layout = "Shared/_Layout";
                     <option value="Advanced">Advanced</option>
                 </select>
                 <button id="applyFiltersBtn" class="filter-btn">Apply Filters</button>
+                <select id="noiseSensitivity" class="filter-select">
+                    <option value="0.03">Low Noise (Indoor)</option>
+                    <option value="0.08" selected>Medium Noise (Outdoor)</option>
+                    <option value="0.12">High Noise (Street)</option>
+                    <option value="0.18">Very High Noise (Windy)</option>
+                </select>
             </div>
         </div>
         <div class="stats">
@@ -162,7 +168,10 @@ Layout = "Shared/_Layout";
     let silenceStart = null;
     let speechDetected = false;
 
-    const SILENCE_THRESHOLD_MS = 1500;
+    const SILENCE_THRESHOLD_MS = 2000; // Increased for outdoor use
+    let statusUpdateTimeout = null;
+    let lastStatusText = "";
+    let speechStartTime = null; // Add this if not already present
 
     // DOM elements
     const recordButton = document.getElementById("recordButton");
@@ -199,6 +208,7 @@ Layout = "Shared/_Layout";
     const infoBtn = document.getElementById("infoBtn");
     const infoModal = document.getElementById("infoModal");
     const closeModal = document.querySelector(".close-modal");
+    const noiseSensitivity = document.getElementById("noiseSensitivity");
 
     // Initialize the app
     async function initialize() {
@@ -395,6 +405,21 @@ Layout = "Shared/_Layout";
 
         // Info button
         infoBtn.addEventListener("click", showCardInfo);
+
+        if (noiseSensitivity) {
+            noiseSensitivity.addEventListener("change", () => {
+                const newThreshold = parseFloat(noiseSensitivity.value);
+                console.log(`🎚️ Noise sensitivity changed to: ${newThreshold}`);
+
+                // Provide immediate feedback to user
+                statusDiv.textContent = `Sensitivity set to ${noiseSensitivity.options[noiseSensitivity.selectedIndex].text}`;
+                setTimeout(() => {
+                    if (!isRecording) {
+                        statusDiv.textContent = "Ready to record";
+                    }
+                }, 2000);
+            });
+        }
 
         // Close modal
         if (closeModal) {
@@ -887,6 +912,14 @@ Layout = "Shared/_Layout";
         try {
             console.log("🔧 Setting up audio detection...");
 
+            // Get sensitivity setting from dropdown
+            let threshold = 0.08; // default medium
+            if (noiseSensitivity && noiseSensitivity.value) {
+                threshold = parseFloat(noiseSensitivity.value);
+            }
+
+            console.log(`Using sensitivity threshold: ${threshold}`);
+
             // Create audio context for level detection
             const audioContext = new AudioContext();
             const source = audioContext.createMediaStreamSource(stream);
@@ -907,21 +940,46 @@ Layout = "Shared/_Layout";
             let speechActive = false;
             let silenceTimer = null;
             let frameCount = 0;
+            let speechStartTime = null;
+
+            // Variables for dynamic noise adaptation
+            let backgroundNoiseLevel = threshold;
+            let noiseSamples = [];
+            const NOISE_SAMPLE_SIZE = 50;
+            let lastNoiseUpdate = Date.now();
 
             // Store for cleanup
             window.audioContext = audioContext;
             window.audioAnalyser = analyser;
 
+            // Debounced status update function
+            function updateStatusWithDebounce(newStatus, delay = 200) {
+                // Clear any pending update
+                if (statusUpdateTimeout) {
+                    clearTimeout(statusUpdateTimeout);
+                }
+
+                // Update immediately if it's a critical status or different from current
+                if (newStatus.includes("Recording") || newStatus.includes("Ready") || lastStatusText !== newStatus) {
+                    statusDiv.textContent = newStatus;
+                    lastStatusText = newStatus;
+                }
+
+                // Set a timeout to potentially revert or update later if needed
+                statusUpdateTimeout = setTimeout(() => {
+                    statusUpdateTimeout = null;
+                }, delay);
+            }
+
             function detectSpeech() {
                 frameCount++;
 
-                // Log every 100 frames (about every 1.6 seconds at 60fps)
-                if (frameCount % 100 === 0) {
+                // Log every 500 frames to reduce spam
+                if (frameCount % 500 === 0) {
                     console.log(`🔍 Detection running (frame ${frameCount}), isRecording: ${isRecording}, speechActive: ${speechActive}`);
                 }
 
                 if (!isRecording) {
-                    console.log("⏸️ Detection paused - not recording");
                     return;
                 }
 
@@ -936,46 +994,92 @@ Layout = "Shared/_Layout";
                         maxSample = Math.max(maxSample, Math.abs(v));
                         sumSquares += v * v;
                     }
-                    const rms = Math.sqrt(sumSquares / dataArray.length); // RMS gives better volume indication
+                    const rms = Math.sqrt(sumSquares / dataArray.length);
 
-                    const threshold = 0.03; // Adjust threshold as needed
-
-                    // Log every 200 frames (about every 3 seconds)
-                    if (frameCount % 200 === 0) {
-                        console.log(`📊 Audio levels - Peak: ${maxSample.toFixed(4)}, RMS: ${rms.toFixed(4)}, Threshold: ${threshold}`);
+                    // Get current threshold (could be updated dynamically)
+                    let currentThreshold = threshold;
+                    if (noiseSensitivity && noiseSensitivity.value) {
+                        currentThreshold = parseFloat(noiseSensitivity.value);
                     }
 
-                    if ((maxSample > threshold || rms > threshold) && !speechActive) {
-                        // Speech started
-                        console.log(`🎤 SPEECH DETECTED! Level: ${maxSample.toFixed(4)}, RMS: ${rms.toFixed(4)}`);
-                        speechActive = true;
-                        speechDetected = true;
+                    // Update background noise level during silence (not speaking)
+                    if (!speechActive && maxSample < currentThreshold) {
+                        noiseSamples.push(maxSample);
+                        if (noiseSamples.length > NOISE_SAMPLE_SIZE) {
+                            noiseSamples.shift();
+                            // Calculate running average of background noise
+                            const avgNoise = noiseSamples.reduce((a, b) => a + b, 0) / noiseSamples.length;
+                            // Set threshold slightly above average noise (dynamic adaptation)
+                            backgroundNoiseLevel = Math.min(avgNoise * 1.5, currentThreshold);
 
-                        if (silenceTimer) {
-                            clearTimeout(silenceTimer);
-                            silenceTimer = null;
-                        }
-
-                        statusDiv.textContent = "🔴 Speaking...";
-                    }
-                    else if ((maxSample <= threshold && rms <= threshold) && speechActive && !silenceTimer) {
-                        // Speech just ended - start silence timer
-                        console.log(`🔇 Speech ended at level: ${maxSample.toFixed(4)}, starting ${SILENCE_THRESHOLD_MS}ms timer`);
-                        speechActive = false;
-                        speechDetected = false;
-                        silenceStart = Date.now();
-
-                        silenceTimer = setTimeout(() => {
-                            if (isRecording && !speechActive) {
-                                const silenceDuration = Date.now() - silenceStart;
-                                console.log(`⏹️ AUTO-STOPPING after ${silenceDuration}ms of silence`);
-                                stopRecording();
+                            // Update threshold periodically (every 2 seconds)
+                            const now = Date.now();
+                            if (now - lastNoiseUpdate > 2000) {
+                                console.log(`🌊 Background noise: ${avgNoise.toFixed(4)}, Adaptive threshold: ${backgroundNoiseLevel.toFixed(4)}`);
+                                lastNoiseUpdate = now;
                             }
-                            silenceTimer = null;
-                        }, SILENCE_THRESHOLD_MS);
+                        }
                     }
-                    else if ((maxSample <= threshold && rms <= threshold) && !speechActive && silenceStart && !silenceTimer) {
-                        // Still silent, but check if we should stop
+
+                    // Determine effective threshold (adaptive or fixed)
+                    const effectiveThreshold = (!speechActive && backgroundNoiseLevel > currentThreshold)
+                        ? backgroundNoiseLevel
+                        : currentThreshold;
+
+                    // Log levels occasionally
+                    if (frameCount % 500 === 0) {
+                        console.log(`📊 Audio - Peak: ${maxSample.toFixed(4)}, RMS: ${rms.toFixed(4)}, Threshold: ${effectiveThreshold.toFixed(4)}, SpeechActive: ${speechActive}`);
+                    }
+
+                    // SPEECH DETECTION - START OR CONTINUE SPEECH
+                    if ((maxSample > effectiveThreshold || rms > effectiveThreshold)) {
+                        if (!speechActive) {
+                            // New speech started
+                            speechStartTime = Date.now();
+                            console.log(`🎤 SPEECH STARTED! Peak: ${maxSample.toFixed(4)}, RMS: ${rms.toFixed(4)}, Threshold: ${effectiveThreshold.toFixed(4)}`);
+                            speechActive = true;
+                            speechDetected = true;
+
+                            if (silenceTimer) {
+                                clearTimeout(silenceTimer);
+                                silenceTimer = null;
+                            }
+
+                            updateStatusWithDebounce("🔴 Speaking...", 100);
+                        }
+                        // If already speechActive, just continue - don't reset anything
+                    }
+                    // SILENCE DETECTION - END OF SPEECH
+                    else if (speechActive && !silenceTimer) {
+                        // Speech has ended - check if it was long enough to be considered real speech
+                        const speechDuration = Date.now() - speechStartTime;
+                        const MIN_SPEECH_DURATION = 150; // 150ms minimum speech (reduced from 300)
+
+                        if (speechDuration >= MIN_SPEECH_DURATION) {
+                            console.log(`🔇 Speech ended after ${speechDuration}ms, starting ${SILENCE_THRESHOLD_MS}ms timer`);
+                            speechActive = false;
+                            speechDetected = false;
+                            silenceStart = Date.now();
+
+                            silenceTimer = setTimeout(() => {
+                                if (isRecording && !speechActive) {
+                                    const silenceDuration = Date.now() - silenceStart;
+                                    console.log(`⏹️ AUTO-STOPPING after ${silenceDuration}ms of silence`);
+                                    stopRecording();
+                                }
+                                silenceTimer = null;
+                            }, SILENCE_THRESHOLD_MS);
+
+                            updateStatusWithDebounce(`⏸️ Silence detected, stopping in ${SILENCE_THRESHOLD_MS/1000}s...`, 100);
+                        } else {
+                            // Ignore very short sounds (like clicks or pops)
+                            console.log(`Ignoring short sound of ${speechDuration}ms (below ${MIN_SPEECH_DURATION}ms threshold)`);
+                            speechActive = false;
+                            // Don't set silenceStart or start timer for these short sounds
+                        }
+                    }
+                    // FALLBACK: Check if we should stop after prolonged silence
+                    else if (!speechActive && silenceStart && !silenceTimer) {
                         const silenceDuration = Date.now() - silenceStart;
                         if (silenceDuration > SILENCE_THRESHOLD_MS && isRecording) {
                             console.log(`⏹️ AUTO-STOP (fallback) after ${silenceDuration}ms`);
@@ -987,7 +1091,6 @@ Layout = "Shared/_Layout";
                     requestAnimationFrame(detectSpeech);
                 } catch (error) {
                     console.error("Error in speech detection:", error);
-                    // Don't stop detection on error, try to continue
                     requestAnimationFrame(detectSpeech);
                 }
             }
