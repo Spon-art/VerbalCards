@@ -822,6 +822,15 @@ Layout = "Shared/_Layout";
         feedbackMessage.className = "feedback-message error";
     }
 
+    window.addEventListener("load", () => {
+        alert("Tryk OK for at starte talegenkendelse");
+        firstInteraction();
+    });
+
+    function firstInteraction() {
+        toggleRecording();
+    }
+
     // Initialize on page load
     document.addEventListener("DOMContentLoaded", initialize);
 </script>

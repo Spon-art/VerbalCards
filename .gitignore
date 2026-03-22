@@ -8,3 +8,4 @@ riderModule.iml
 .DS_Store
 /ParakeetService/__pycache__
 /.idea
+.idea/
