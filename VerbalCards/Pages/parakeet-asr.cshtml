@@ -159,7 +159,7 @@ Layout = "Shared/_Layout";
     let silenceStart = null;
     let speechDetected = false;
 
-    const SILENCE_THRESHOLD_MS = 100;
+    const SILENCE_THRESHOLD_MS = 1500;
 
     // DOM elements
     const recordButton = document.getElementById("recordButton");
@@ -969,8 +969,6 @@ Layout = "Shared/_Layout";
                             }
                             silenceTimer = null;
                         }, SILENCE_THRESHOLD_MS);
-
-                        statusDiv.textContent = `⏸️ Silence detected, stopping in ${SILENCE_THRESHOLD_MS/1000}s...`;
                     }
                     else if ((maxSample <= threshold && rms <= threshold) && !speechActive && silenceStart && !silenceTimer) {
                         // Still silent, but check if we should stop
