@@ -155,6 +155,11 @@ Layout = "Shared/_Layout";
     let totalScore = 0;
     let currentStreak = 0;
     let categories = [];
+    let vadInstance;
+    let silenceStart = null;
+    let speechDetected = false;
+
+    const SILENCE_THRESHOLD_MS = 100;
 
     // DOM elements
     const recordButton = document.getElementById("recordButton");
@@ -309,16 +314,46 @@ Layout = "Shared/_Layout";
         statusDiv.className = "status-message";
     }
 
-    // Stop recording function
+    // Update stopRecording to clean up properly
     function stopRecording() {
         if (mediaRecorder && isRecording) {
             mediaRecorder.stop();
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
             isRecording = false;
+
+            // Stop all tracks
+            if (mediaRecorder.stream) {
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+
+            // Clean up audio context
+            if (window.audioContext) {
+                window.audioContext.close().catch(console.warn);
+                window.audioContext = null;
+            }
+
+            // Clear any pending timer
+            if (window.silenceTimer) {
+                clearTimeout(window.silenceTimer);
+                window.silenceTimer = null;
+            }
+
             recordButton.querySelector('.record-text').textContent = "Start Recording";
             recordingVisualization.style.display = "none";
+            statusDiv.textContent = "✅ Ready to record";
+            statusDiv.className = "status-message";
+
+            // Reset flags
+            speechDetected = false;
+            silenceStart = null;
         }
     }
+
+    function ensureAudioContextRunning() {
+        if (vadInstance && vadInstance.audioContext && vadInstance.audioContext.state === 'suspended') {
+            vadInstance.audioContext.resume().catch(console.warn);
+        }
+    }
+
 
     // Set up event listeners
     function setupEventListeners() {
@@ -381,33 +416,55 @@ Layout = "Shared/_Layout";
         }
     }
 
-    // Start recording
     async function startRecording() {
         try {
+            console.log("🎙️ Starting recording...");
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            console.log("✅ Microphone access granted");
+
+            // Setup media recorder first
             mediaRecorder = new MediaRecorder(stream);
             audioChunks = [];
 
             mediaRecorder.addEventListener("dataavailable", event => {
+                console.log("📀 Data available, size:", event.data.size);
                 audioChunks.push(event.data);
             });
 
             mediaRecorder.addEventListener("stop", handleRecordingStop);
 
-            mediaRecorder.start();
+            // Set isRecording to true BEFORE starting detection
             isRecording = true;
+
+            // Setup audio level detection
+            const detectionSetupSuccess = setupVAD(stream);
+
+            if (!detectionSetupSuccess) {
+                console.warn("⚠️ Audio detection failed, recording without auto-stop");
+                statusDiv.textContent = "Recording... (auto-stop disabled)";
+            }
+
+            mediaRecorder.start();
+            console.log("📹 MediaRecorder started");
+
             recordButton.querySelector('.record-text').textContent = "Stop Recording";
-            statusDiv.textContent = "Recording...";
+            statusDiv.textContent = "🔴 Recording... Speak now";
             statusDiv.className = "status-message recording";
             recordingVisualization.style.display = "block";
 
             // Hide previous results
             resultSection.style.display = "none";
 
+            // Reset detection flags
+            speechDetected = false;
+            silenceStart = null;
+
         } catch (error) {
-            statusDiv.textContent = "Microphone access denied";
+            console.error("❌ Recording error:", error);
+            statusDiv.textContent = "❌ Microphone access denied";
             statusDiv.className = "status-message error";
             alert("Please allow microphone access to use flashcards");
+            isRecording = false; // Reset flag on error
         }
     }
 
@@ -820,6 +877,130 @@ Layout = "Shared/_Layout";
         userSpeech.textContent = "Error processing recording";
         feedbackMessage.textContent = `Error: ${message}`;
         feedbackMessage.className = "feedback-message error";
+    }
+
+    function setupVAD(stream) {
+        try {
+            console.log("🔧 Setting up audio detection...");
+
+            // Create audio context for level detection
+            const audioContext = new AudioContext();
+            const source = audioContext.createMediaStreamSource(stream);
+
+            // Create analyser node for volume detection
+            const analyser = audioContext.createAnalyser();
+            source.connect(analyser);
+            analyser.fftSize = 256;
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            // Resume audio context (required for autoplay policies)
+            audioContext.resume().then(() => {
+                console.log("🎵 AudioContext resumed, state:", audioContext.state);
+            }).catch(err => {
+                console.warn("Could not resume AudioContext:", err);
+            });
+
+            let speechActive = false;
+            let silenceTimer = null;
+            let frameCount = 0;
+
+            // Store for cleanup
+            window.audioContext = audioContext;
+            window.audioAnalyser = analyser;
+
+            function detectSpeech() {
+                frameCount++;
+
+                // Log every 100 frames (about every 1.6 seconds at 60fps)
+                if (frameCount % 100 === 0) {
+                    console.log(`🔍 Detection running (frame ${frameCount}), isRecording: ${isRecording}, speechActive: ${speechActive}`);
+                }
+
+                if (!isRecording) {
+                    console.log("⏸️ Detection paused - not recording");
+                    return;
+                }
+
+                try {
+                    analyser.getByteTimeDomainData(dataArray);
+
+                    // Calculate volume level
+                    let sumSquares = 0;
+                    let maxSample = 0;
+                    for (let i = 0; i < dataArray.length; i++) {
+                        const v = (dataArray[i] - 128) / 128;
+                        maxSample = Math.max(maxSample, Math.abs(v));
+                        sumSquares += v * v;
+                    }
+                    const rms = Math.sqrt(sumSquares / dataArray.length); // RMS gives better volume indication
+
+                    const threshold = 0.03; // Adjust threshold as needed
+
+                    // Log every 200 frames (about every 3 seconds)
+                    if (frameCount % 200 === 0) {
+                        console.log(`📊 Audio levels - Peak: ${maxSample.toFixed(4)}, RMS: ${rms.toFixed(4)}, Threshold: ${threshold}`);
+                    }
+
+                    if ((maxSample > threshold || rms > threshold) && !speechActive) {
+                        // Speech started
+                        console.log(`🎤 SPEECH DETECTED! Level: ${maxSample.toFixed(4)}, RMS: ${rms.toFixed(4)}`);
+                        speechActive = true;
+                        speechDetected = true;
+
+                        if (silenceTimer) {
+                            clearTimeout(silenceTimer);
+                            silenceTimer = null;
+                        }
+
+                        statusDiv.textContent = "🔴 Speaking...";
+                    }
+                    else if ((maxSample <= threshold && rms <= threshold) && speechActive && !silenceTimer) {
+                        // Speech just ended - start silence timer
+                        console.log(`🔇 Speech ended at level: ${maxSample.toFixed(4)}, starting ${SILENCE_THRESHOLD_MS}ms timer`);
+                        speechActive = false;
+                        speechDetected = false;
+                        silenceStart = Date.now();
+
+                        silenceTimer = setTimeout(() => {
+                            if (isRecording && !speechActive) {
+                                const silenceDuration = Date.now() - silenceStart;
+                                console.log(`⏹️ AUTO-STOPPING after ${silenceDuration}ms of silence`);
+                                stopRecording();
+                            }
+                            silenceTimer = null;
+                        }, SILENCE_THRESHOLD_MS);
+
+                        statusDiv.textContent = `⏸️ Silence detected, stopping in ${SILENCE_THRESHOLD_MS/1000}s...`;
+                    }
+                    else if ((maxSample <= threshold && rms <= threshold) && !speechActive && silenceStart && !silenceTimer) {
+                        // Still silent, but check if we should stop
+                        const silenceDuration = Date.now() - silenceStart;
+                        if (silenceDuration > SILENCE_THRESHOLD_MS && isRecording) {
+                            console.log(`⏹️ AUTO-STOP (fallback) after ${silenceDuration}ms`);
+                            stopRecording();
+                        }
+                    }
+
+                    // Continue detection
+                    requestAnimationFrame(detectSpeech);
+                } catch (error) {
+                    console.error("Error in speech detection:", error);
+                    // Don't stop detection on error, try to continue
+                    requestAnimationFrame(detectSpeech);
+                }
+            }
+
+            // Start detection immediately
+            console.log("🚀 Starting detection loop...");
+            detectSpeech();
+
+            console.log("✅ Audio level detection started successfully");
+            return true;
+
+        } catch (error) {
+            console.error("❌ Error setting up audio detection:", error);
+            return false;
+        }
     }
 
     window.addEventListener("load", async () => {
