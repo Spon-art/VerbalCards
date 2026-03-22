@@ -650,3 +650,9 @@
     margin-left: 5px;
     grid-column: 1 / -1;
 }
+
+.title-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
