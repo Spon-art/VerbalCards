@@ -29,9 +29,9 @@ Layout = "Shared/_Layout";
                 <button id="applyFiltersBtn" class="filter-btn">Apply Filters</button>
                 <select id="noiseSensitivity" class="filter-select">
                     <option value="0.03">Low Noise (Indoor)</option>
-                    <option value="0.08" selected>Medium Noise (Outdoor)</option>
-                    <option value="0.12">High Noise (Street)</option>
-                    <option value="0.18">Very High Noise (Windy)</option>
+                    <option value="0.05" selected>Medium Noise (Outdoor)</option>
+                    <option value="0.08">High Noise (Street)</option>
+                    <option value="0.11">Very High Noise (Windy)</option>
                 </select>
             </div>
         </div>
@@ -456,6 +456,7 @@ Layout = "Shared/_Layout";
         }
 
         try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             console.log("🎙️ Starting cooldown before recording...");
 
             // Set cooldown state
@@ -486,8 +487,7 @@ Layout = "Shared/_Layout";
             cooldownTimeout = setTimeout(async () => {
                 try {
                     console.log("🎙️ Cooldown finished, starting recording...");
-
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    
                     console.log("✅ Microphone access granted");
 
                     // Setup media recorder first
