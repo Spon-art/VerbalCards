@@ -13,7 +13,7 @@
     align-items: flex-start;
     margin-bottom: 20px;
     padding: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #fa9a35 0%, #f3a52b 100%);
     border-radius: 15px;
     color: white;
     flex-wrap: wrap;
@@ -107,7 +107,7 @@
     padding: 20px;
     background-color: #f8f9fa;
     border-radius: 8px;
-    border-left: 4px solid #007bff;
+    border-left: 4px solid #fa9a35;
 }
 
 .badge {
@@ -193,7 +193,7 @@
 }
 
 .record-btn {
-    background-color: #007bff;
+    background-color: #fa9a35;
     color: white;
     border: none;
     padding: 15px 40px;
@@ -261,7 +261,7 @@
 .sound-wave span {
     width: 5px;
     height: 20px;
-    background: #007bff;
+    background: #fa9a35;
     border-radius: 5px;
     animation: wave 1s infinite ease-in-out;
 }
@@ -285,7 +285,7 @@
 
 .user-speech {
     font-size: 1.3em;
-    color: #007bff;
+    color: #fa9a35;
     margin: 10px 0;
     padding: 10px;
     background-color: white;
@@ -360,7 +360,7 @@
     padding: 10px;
     background-color: white;
     border-radius: 4px;
-    border-left: 4px solid #007bff;
+    border-left: 4px solid #fa9a35;
     font-style: italic;
 }
 
@@ -448,7 +448,7 @@
     border: none;
     border-radius: 50%;
     background: #f8f9fa;
-    color: #495057;
+    color: #f3a52b;
     font-size: 1.2em;
     cursor: pointer;
     transition: all 0.3s;
@@ -458,7 +458,7 @@
 }
 
 .utility-btn:hover {
-    background: #007bff;
+    background: #f3a52b;
     color: white;
     transform: scale(1.1);
 }
@@ -475,7 +475,7 @@
     width: 50px;
     height: 50px;
     border: 5px solid #f3f3f3;
-    border-top: 5px solid #007bff;
+    border-top: 5px solid #fa9a35;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 20px;

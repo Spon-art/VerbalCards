@@ -403,6 +403,7 @@ Layout = "Shared/_Layout";
         // Repeat button
         repeatBtn.addEventListener("click", () => {
             updateCard(); // Just refreshes the current card
+            toggleRecording();
         });
 
         // Info button
@@ -449,8 +450,8 @@ Layout = "Shared/_Layout";
 
     async function startRecording() {
         // Prevent starting recording if already recording or in cooldown
-        if (isRecording || isCooldown) {
-            console.log("Cannot start recording - already recording or in cooldown");
+        if (isCooldown) {
+            console.log("Cannot start recording - already in cooldown");
             return;
         }
 
@@ -1169,13 +1170,13 @@ Layout = "Shared/_Layout";
                 toggleRecording();
             } else {
                 // Mikrofon ikke tilladt endnu → brug alert for at få en user gesture
-                alert("For at Talegenkeldelse kan fungere skal mikrofonen kunne benyttes. Tryk OK og derefter tillad brug af mikrofonen");
+                alert("To make speech recognition work, the microphone has to be used. Press OK, thereafter allow microphone use");
                 toggleRecording();
             }
 
         } catch (err) {
             // Hvis permissions API ikke er understøttet (fx i Safari)
-            alert("For at Talegenkeldelse kan fungere skal mikrofonen kunne benyttes. Tryk OK og derefter tillad brug af mikrofonen");
+            alert("To make speech recognition work, the microphone has to be used. Press OK, thereafter allow microphone use");
             toggleRecording();
         }
     });
