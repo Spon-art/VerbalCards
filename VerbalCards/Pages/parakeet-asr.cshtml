@@ -164,14 +164,16 @@ Layout = "Shared/_Layout";
     let totalScore = 0;
     let currentStreak = 0;
     let categories = [];
+
+    const SILENCE_THRESHOLD_MS = 1500;
     let vadInstance;
     let silenceStart = null;
     let speechDetected = false;
-
-    const SILENCE_THRESHOLD_MS = 2000; // Increased for outdoor use
     let statusUpdateTimeout = null;
     let lastStatusText = "";
-    let speechStartTime = null; // Add this if not already present
+    let speechStartTime = null;
+    let cooldownTimeout = null;
+    let isCooldown = false;
 
     // DOM elements
     const recordButton = document.getElementById("recordButton");
@@ -446,54 +448,104 @@ Layout = "Shared/_Layout";
     }
 
     async function startRecording() {
+        // Prevent starting recording if already recording or in cooldown
+        if (isRecording || isCooldown) {
+            console.log("Cannot start recording - already recording or in cooldown");
+            return;
+        }
+
         try {
-            console.log("🎙️ Starting recording...");
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            console.log("✅ Microphone access granted");
+            console.log("🎙️ Starting cooldown before recording...");
 
-            // Setup media recorder first
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
+            // Set cooldown state
+            isCooldown = true;
+            recordButton.disabled = true;
 
-            mediaRecorder.addEventListener("dataavailable", event => {
-                console.log("📀 Data available, size:", event.data.size);
-                audioChunks.push(event.data);
-            });
+            // Show cooldown countdown
+            let cooldownSeconds = 5;
+            statusDiv.textContent = `⏳ Get ready... Starting in ${cooldownSeconds}s`;
+            statusDiv.className = "status-message cooldown";
 
-            mediaRecorder.addEventListener("stop", handleRecordingStop);
+            // Create countdown interval
+            const countdownInterval = setInterval(() => {
+                if (!isCooldown) {
+                    clearInterval(countdownInterval);
+                    return;
+                }
 
-            // Set isRecording to true BEFORE starting detection
-            isRecording = true;
+                cooldownSeconds--;
+                if (cooldownSeconds > 0) {
+                    statusDiv.textContent = `⏳ Get ready... Starting in ${cooldownSeconds}s`;
+                } else {
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
 
-            // Setup audio level detection
-            const detectionSetupSuccess = setupVAD(stream);
+            // Wait for cooldown
+            cooldownTimeout = setTimeout(async () => {
+                try {
+                    console.log("🎙️ Cooldown finished, starting recording...");
 
-            if (!detectionSetupSuccess) {
-                console.warn("⚠️ Audio detection failed, recording without auto-stop");
-                statusDiv.textContent = "Recording... (auto-stop disabled)";
-            }
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    console.log("✅ Microphone access granted");
 
-            mediaRecorder.start();
-            console.log("📹 MediaRecorder started");
+                    // Setup media recorder first
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
 
-            recordButton.querySelector('.record-text').textContent = "Stop Recording";
-            statusDiv.textContent = "🔴 Recording... Speak now";
-            statusDiv.className = "status-message recording";
-            recordingVisualization.style.display = "block";
+                    mediaRecorder.addEventListener("dataavailable", event => {
+                        console.log("📀 Data available, size:", event.data.size);
+                        audioChunks.push(event.data);
+                    });
 
-            // Hide previous results
-            resultSection.style.display = "none";
+                    mediaRecorder.addEventListener("stop", handleRecordingStop);
 
-            // Reset detection flags
-            speechDetected = false;
-            silenceStart = null;
+                    // Set isRecording to true BEFORE starting detection
+                    isRecording = true;
+                    isCooldown = false;
+                    recordButton.disabled = false;
+
+                    // Setup audio level detection
+                    const detectionSetupSuccess = setupVAD(stream);
+
+                    if (!detectionSetupSuccess) {
+                        console.warn("⚠️ Audio detection failed, recording without auto-stop");
+                        statusDiv.textContent = "Recording... (auto-stop disabled)";
+                    }
+
+                    mediaRecorder.start();
+                    console.log("📹 MediaRecorder started");
+
+                    recordButton.querySelector('.record-text').textContent = "Stop Recording";
+                    statusDiv.textContent = "🔴 Recording... Speak now";
+                    statusDiv.className = "status-message recording";
+                    recordingVisualization.style.display = "block";
+
+                    // Hide previous results
+                    resultSection.style.display = "none";
+
+                    // Reset detection flags
+                    speechDetected = false;
+                    silenceStart = null;
+
+                } catch (error) {
+                    console.error("❌ Recording error:", error);
+                    statusDiv.textContent = "❌ Microphone access denied";
+                    statusDiv.className = "status-message error";
+                    alert("Please allow microphone access to use flashcards");
+                    isRecording = false;
+                    isCooldown = false;
+                    recordButton.disabled = false;
+                    recordButton.querySelector('.record-text').textContent = "Start Recording";
+                }
+            }, 5000);
 
         } catch (error) {
-            console.error("❌ Recording error:", error);
-            statusDiv.textContent = "❌ Microphone access denied";
+            console.error("❌ Cooldown error:", error);
+            statusDiv.textContent = "❌ Error starting recording";
             statusDiv.className = "status-message error";
-            alert("Please allow microphone access to use flashcards");
-            isRecording = false; // Reset flag on error
+            isCooldown = false;
+            recordButton.disabled = false;
         }
     }
 
